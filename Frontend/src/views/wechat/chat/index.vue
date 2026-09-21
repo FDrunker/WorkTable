@@ -550,6 +550,15 @@ async function loadSessions() {
   try {
     const res = await listWechatSessions()
     sessions.value = res.data || []
+  } catch {
+    /*
+      接口不可用时（后端没起来、或跑的是不含 /wechat/* 的旧编译产物）只清空列表。
+      具体原因已由请求拦截器弹出提示；这里必须吞掉异常 ——
+      它是 onMounted 里 await 的，抛出去会变成
+      "Unhandled error during execution of mounted hook"，整页直接报错，
+      用户反而看不到"数据源未就绪 + 没有会话"这两个更准确的界面信号。
+    */
+    sessions.value = []
   } finally {
     sessionLoading.value = false
   }

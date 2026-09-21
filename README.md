@@ -108,6 +108,11 @@ npm run build:prod   # 生产构建
 - **切换来源**：`wechat.datasource` 可选 `text`（默认）、`mock`（内置样例）、`cli`（本地 wechat-cli）；
   只有 `text` 支持文本导入，其余取值下「导入文本」按钮会置灰并说明原因。
 
+- **排错**：页面若报 `No static resource wechat/sessions for request '/wechat/sessions'`（或其它 `/wechat/*` 报同样的错），
+  说明**当前运行的后端进程里没有这些接口**，通常是跑在了 `ruoyi-wechat` 编译进去之前的旧产物/旧进程上。
+  重新编译并重启后端即可（`cd Backend && mvn clean package` 后重启，或在 IDEA 里 Rebuild Project 后重启）。
+  验证：启动日志会出现「微信数据源：粘贴文本（默认）」，或访问 `/v3/api-docs` 能搜到 `/wechat/sessions`。
+
 ## 配置说明
 
 - 后端主配置：`Backend/ruoyi-admin/src/main/resources/application.yml`
