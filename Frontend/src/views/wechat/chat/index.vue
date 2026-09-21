@@ -67,11 +67,21 @@
               <el-icon><Refresh /></el-icon>
               <span>同步记录</span>
             </el-button>
-            <el-button type="primary" size="small" class="analyze-btn" @click="runAnalysis">
-              <el-icon><MagicStick /></el-icon>
-              <span>分析</span>
-              <span v-if="unanalyzedCount > 0" class="btn-badge">{{ unanalyzedCount }}</span>
-            </el-button>
+            <el-tooltip :content="agentEnabled ? '分析未分析记录' : '分析功能未启用'" placement="bottom">
+              <span class="analyze-wrap">
+                <el-button
+                  type="primary"
+                  size="small"
+                  class="analyze-btn"
+                  :disabled="!agentEnabled"
+                  @click="runAnalysis"
+                >
+                  <el-icon><MagicStick /></el-icon>
+                  <span>分析</span>
+                  <span v-if="unanalyzedCount > 0" class="btn-badge">{{ unanalyzedCount }}</span>
+                </el-button>
+              </span>
+            </el-tooltip>
           </div>
         </header>
 
@@ -167,9 +177,19 @@
             <template v-if="unanalyzedCount > 0">待分析 {{ unanalyzedCount }} 条</template>
             <template v-else>没有未分析的记录</template>
           </span>
-          <el-button type="primary" size="small" class="analyze-btn" @click="runAnalysis">
-            分析未分析记录
-          </el-button>
+          <el-tooltip :content="agentEnabled ? '分析未分析的记录' : '分析功能未启用'" placement="top">
+            <span class="analyze-wrap">
+              <el-button
+                type="primary"
+                size="small"
+                class="analyze-btn"
+                :disabled="!agentEnabled"
+                @click="runAnalysis"
+              >
+                分析未分析记录
+              </el-button>
+            </span>
+          </el-tooltip>
         </div>
       </div>
 
@@ -334,6 +354,13 @@ const goal = ref('')
 
 const statusReady = ref(false)
 const statusText = ref('正在检测数据源…')
+/**
+ * 调用 agent 的能力是否启用。
+ *
+ * 后端已移除调用 agent 的代码，因此初始为 false；
+ * 分析按钮据此置灰，避免用户点击后没有任何反馈。
+ */
+const agentEnabled = ref(false)
 
 const messageListRef = ref<HTMLElement | null>(null)
 
@@ -393,9 +420,11 @@ async function loadStatus() {
     const res = await getWechatStatus()
     statusReady.value = !!res.data?.ready
     statusText.value = res.data?.message || ''
+    agentEnabled.value = !!res.data?.agentEnabled
   } catch {
     statusReady.value = false
     statusText.value = '无法获取数据源状态'
+    agentEnabled.value = false
   }
 }
 
@@ -836,6 +865,14 @@ $wechat-border: #d9d9d9;
   background: rgba(255, 255, 255, 0.3);
   font-size: 11px;
   line-height: 16px;
+}
+
+/*
+  tooltip 需要一个可包裹的元素，而 disabled 的按钮不触发鼠标事件，
+  因此用外层 span 兜住 hover，保证禁用状态下提示仍能弹出。
+*/
+.analyze-wrap {
+  display: inline-block;
 }
 
 .identity-alert {

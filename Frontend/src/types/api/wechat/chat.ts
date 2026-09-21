@@ -4,10 +4,17 @@ import type { BaseEntity } from '../common'
 export interface WechatStatus {
   /** 数据源是否就绪 */
   ready: boolean
-  /** 数据源标识：mock / cli / upload */
+  /** 数据源标识：mock / cli */
   mode: string
   /** 人类可读说明，未就绪时含修复建议 */
   message: string
+  /**
+   * 调用 agent 的能力是否已启用。
+   *
+   * 后端已移除调用 agent 的代码，当前固定为 false；
+   * 前端据此把分析入口置为不可用，避免用户反复点击。
+   */
+  agentEnabled?: boolean
 }
 
 /** 会话列表项 */
