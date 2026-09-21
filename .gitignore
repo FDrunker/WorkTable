@@ -1,0 +1,69 @@
+# ------------------------------------------------------------------
+# WorkTable 仓库根级忽略规则
+# 子项目内另有 Backend/.gitignore 与 Frontend/.gitignore，两者同时生效
+# ------------------------------------------------------------------
+
+# ---------------------------- 操作系统 ----------------------------
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---------------------------- 编辑器 / IDE ------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+*~
+
+# ---------------------------- 日志与临时文件 ----------------------
+*.log
+logs/
+tmp/
+temp/
+*.bak
+*.orig
+*.rej
+
+# ---------------------------- Java / Maven ------------------------
+# 注意：build/ 不能写成全局模式，否则会误伤 Frontend/src/views/tool/build/ 下的表单构建器源码
+target/
+/build/
+/out/
+*.class
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar
+*.xml.versionsBackup
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.properties
+
+# ---------------------------- Node / Vite -------------------------
+node_modules/
+dist/
+dist-ssr/
+.vite/
+.cache/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# ---------------------------- 本地环境变量 / 密钥 -----------------
+# 注意：.env.development / .env.production / .env.staging 属于项目配置，需要纳入版本管理
+.env.local
+.env.*.local
+*.pem
+*.key
