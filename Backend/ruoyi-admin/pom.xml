@@ -54,6 +54,12 @@
             <artifactId>ruoyi-generator</artifactId>
         </dependency>
 
+        <!-- 微信聊天分析（恋爱军师）-->
+        <dependency>
+            <groupId>com.ruoyi</groupId>
+            <artifactId>ruoyi-wechat</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

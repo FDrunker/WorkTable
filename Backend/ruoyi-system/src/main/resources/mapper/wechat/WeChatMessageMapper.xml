@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.wechat.mapper.WeChatMessageMapper">
+
+    <resultMap type="com.ruoyi.wechat.domain.WeChatMessage" id="WeChatMessageResult">
+        <result property="messageId"    column="message_id"    />
+        <result property="sessionId"    column="session_id"    />
+        <result property="userId"       column="user_id"       />
+        <result property="msgTime"      column="msg_time"      />
+        <result property="msgDate"      column="msg_date"      />
+        <result property="senderRaw"    column="sender_raw"    />
+        <result property="senderRole"   column="sender_role"   />
+        <result property="content"      column="content"       />
+        <result property="contentMd5"   column="content_md5"   />
+        <result property="msgKind"      column="msg_kind"      />
+        <result property="analyzed"     column="analyzed"      />
+        <result property="analyzedTime" column="analyzed_time" />
+        <result property="analysisId"   column="analysis_id"   />
+        <result property="delFlag"      column="del_flag"      />
+        <result property="createTime"   column="create_time"   />
+    </resultMap>
+
+    <sql id="selectMessageVo">
+        select message_id, session_id, user_id, msg_time, msg_date, sender_raw, sender_role,
+               content, content_md5, msg_kind, analyzed, analyzed_time, analysis_id,
+               del_flag, create_time
+        from sys_wechat_message
+    </sql>
+
+    <!--
+      用 insert ignore 实现幂等同步：唯一索引 uk_wechat_msg_dedup
+      会拦住重复消息，而不是让整个批次因为一条重复而失败。
+    -->
+    <insert id="batchInsertIgnore">
+        insert ignore into sys_wechat_message (
+            session_id, user_id, msg_time, msg_date, sender_raw, sender_role,
+            content, content_md5, msg_kind, analyzed, del_flag, create_time
+        ) values
+        <foreach item="m" collection="list" separator=",">
+            (#{m.sessionId}, #{m.userId}, #{m.msgTime}, #{m.msgDate}, #{m.senderRaw}, #{m.senderRole},
+             #{m.content}, #{m.contentMd5}, #{m.msgKind}, '0', '0', sysdate())
+        </foreach>
+    </insert>
+
+    <select id="selectMessages" resultMap="WeChatMessageResult">
+        <include refid="selectMessageVo"/>
+        <where>
+            session_id = #{sessionId} and del_flag = '0'
+            <if test="analyzed != null and analyzed != ''">
+                and analyzed = #{analyzed}
+            </if>
+        </where>
+        order by message_id asc
+        limit #{offset}, #{limit}
+    </select>
+
+    <select id="countMessages" resultType="int">
+        select count(*) from sys_wechat_message
+        <where>
+            session_id = #{sessionId} and del_flag = '0'
+            <if test="analyzed != null and analyzed != ''">
+                and analyzed = #{analyzed}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectUnanalyzed" resultMap="WeChatMessageResult">
+        <include refid="selectMessageVo"/>
+        where session_id = #{sessionId} and del_flag = '0' and analyzed = '0'
+        order by message_id asc
+        limit #{limit}
+    </select>
+
+    <update id="markAnalyzed">
+        update sys_wechat_message
+        set analyzed = '1',
+            analyzed_time = ifnull(analyzed_time, sysdate()),
+            analysis_id = ifnull(analysis_id, #{analysisId})
+        where message_id in
+        <foreach item="id" collection="messageIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <select id="countUnanalyzed" resultType="int">
+        select count(*) from sys_wechat_message
+        where session_id = #{sessionId} and del_flag = '0' and analyzed = '0'
+    </select>
+
+    <!--
+      按原始标签整批回写角色。空标签需要单独判断：MySQL 中 null = '' 为 null 而非 true，
+      而数据源在私聊里可能给出 null 标签，必须用 ifnull 兜住。
+    -->
+    <update id="updateSenderRoleByLabel">
+        update sys_wechat_message
+        set sender_role = #{role}
+        where session_id = #{sessionId} and del_flag = '0'
+          and ifnull(sender_raw, '') = ifnull(#{rawLabel}, '')
+    </update>
+
+</mapper>

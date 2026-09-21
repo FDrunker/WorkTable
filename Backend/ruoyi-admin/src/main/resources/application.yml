@@ -145,3 +145,48 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# 微信聊天分析（恋爱军师）
+wechat:
+  # 数据源：mock（内置样例，无需外部依赖）| cli（调用本地 wechat-cli）
+  datasource: mock
+  cli:
+    # wechat-cli 可执行文件绝对路径。留空则依次尝试 WECHAT_CLI_BINARY 环境变量与 PATH。
+    # 示例（Windows）: E:/home/zuijiu/.pure-npm-global/wechat-cli.cmd
+    executable: ""
+    timeout-seconds: 120
+    # wechat-cli 源码中单次查询上限为 500，不要调大
+    batch-size: 500
+    # 留空表示自动探测编码（UTF-8 失败回退 GBK）
+    charset: ""
+  clean:
+    # 丢弃表情/通话/撤回/系统提示等无措辞内容
+    drop-noise: true
+    # 连续同一人发言达到该条数时折叠合并，保留"刷屏"这一行为特征
+    collapse-repeat-threshold: 5
+    # 手机号/身份证/银行卡脱敏。数据要发送到云端 API，建议保持开启
+    mask-sensitive: true
+    # 送入 LLM 的上下文字符预算
+    context-char-budget: 40000
+    # 单次分析最多处理多少条未分析消息（超出的部分下次分析继续）
+    max-unanalyzed-per-analysis: 500
+    # 前端聊天记录每页条数
+    message-page-size: 50
+  skill:
+    # 军师知识库位置。需把 goutoujunshi 的 SKILL.md 与 references/ 放到该目录下
+    location: classpath:skill/
+    max-references: 3
+  llm:
+    # OpenAI 兼容接口。DeepSeek: https://api.deepseek.com ；通义: https://dashscope.aliyuncs.com/compatible-mode
+    # 本地 Ollama: http://localhost:11434
+    base-url: ""
+    # 生产环境请用环境变量注入，不要提交真实 Key
+    api-key: ""
+    model: deepseek-chat
+    temperature: 0.7
+    max-tokens: 4096
+    connect-timeout-ms: 10000
+    # 长文分析耗时较长，读超时需要放宽
+    read-timeout-ms: 180000
+    # 仅对 429 / 5xx 重试，不对 4xx 重试
+    max-retries: 2

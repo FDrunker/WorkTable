@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.wechat.mapper.WeChatSessionMapper">
+
+    <resultMap type="com.ruoyi.wechat.domain.WeChatSession" id="WeChatSessionResult">
+        <result property="sessionId"         column="session_id"         />
+        <result property="userId"            column="user_id"            />
+        <result property="chatUsername"      column="chat_username"      />
+        <result property="displayName"       column="display_name"       />
+        <result property="isGroup"           column="is_group"           />
+        <result property="selfUsername"      column="self_username"      />
+        <result property="selfLabels"        column="self_labels"        />
+        <result property="targetLabels"      column="target_labels"      />
+        <result property="identityConfirmed" column="identity_confirmed" />
+        <result property="msgCount"          column="msg_count"          />
+        <result property="unanalyzedCount"   column="unanalyzed_count"   />
+        <result property="syncedUntil"       column="synced_until"       />
+        <result property="lastSyncTime"      column="last_sync_time"     />
+        <result property="delFlag"           column="del_flag"           />
+        <result property="createBy"          column="create_by"          />
+        <result property="createTime"        column="create_time"        />
+        <result property="updateBy"          column="update_by"          />
+        <result property="updateTime"        column="update_time"        />
+        <result property="remark"            column="remark"             />
+    </resultMap>
+
+    <sql id="selectSessionVo">
+        select session_id, user_id, chat_username, display_name, is_group, self_username,
+               self_labels, target_labels, identity_confirmed, msg_count, unanalyzed_count,
+               synced_until, last_sync_time, del_flag, create_by, create_time,
+               update_by, update_time, remark
+        from sys_wechat_session
+    </sql>
+
+    <select id="selectByUserAndChat" resultMap="WeChatSessionResult">
+        <include refid="selectSessionVo"/>
+        where user_id = #{userId} and chat_username = #{chatUsername} and del_flag = '0'
+        limit 1
+    </select>
+
+    <select id="selectSessionsByUser" resultMap="WeChatSessionResult">
+        <include refid="selectSessionVo"/>
+        <where>
+            user_id = #{userId} and del_flag = '0'
+            <if test="displayName != null and displayName != ''">
+                and display_name like concat('%', #{displayName}, '%')
+            </if>
+        </where>
+        order by last_sync_time desc, session_id desc
+    </select>
+
+    <select id="selectById" resultMap="WeChatSessionResult">
+        <include refid="selectSessionVo"/>
+        where session_id = #{sessionId} and del_flag = '0'
+    </select>
+
+    <insert id="insertSession" parameterType="com.ruoyi.wechat.domain.WeChatSession" useGeneratedKeys="true" keyProperty="sessionId">
+        insert into sys_wechat_session (
+            user_id, chat_username, display_name, is_group, self_username, self_labels,
+            target_labels, identity_confirmed, msg_count, unanalyzed_count, synced_until,
+            last_sync_time, del_flag, create_by, create_time, remark
+        ) values (
+            #{userId}, #{chatUsername}, #{displayName}, #{isGroup}, #{selfUsername}, #{selfLabels},
+            #{targetLabels}, #{identityConfirmed}, #{msgCount}, #{unanalyzedCount}, #{syncedUntil},
+            #{lastSyncTime}, '0', #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateSession" parameterType="com.ruoyi.wechat.domain.WeChatSession">
+        update sys_wechat_session
+        <set>
+            <if test="displayName != null">display_name = #{displayName},</if>
+            <if test="isGroup != null">is_group = #{isGroup},</if>
+            <if test="selfUsername != null">self_username = #{selfUsername},</if>
+            <if test="selfLabels != null">self_labels = #{selfLabels},</if>
+            <if test="targetLabels != null">target_labels = #{targetLabels},</if>
+            <if test="identityConfirmed != null">identity_confirmed = #{identityConfirmed},</if>
+            <if test="syncedUntil != null">synced_until = #{syncedUntil},</if>
+            <if test="lastSyncTime != null">last_sync_time = #{lastSyncTime},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where session_id = #{sessionId}
+    </update>
+
+    <!--
+      重新统计而不是累加：去重插入时"影响行数"与"实际新增条数"可能不一致，
+      累加会把重复同步的次数也算进去。一条语句算准更稳妥。
+    -->
+    <update id="refreshCounters">
+        update sys_wechat_session s
+        set s.msg_count = (
+                select count(*) from sys_wechat_message m
+                where m.session_id = s.session_id and m.del_flag = '0'
+            ),
+            s.unanalyzed_count = (
+                select count(*) from sys_wechat_message m
+                where m.session_id = s.session_id and m.del_flag = '0' and m.analyzed = '0'
+            )
+        where s.session_id = #{sessionId}
+    </update>
+
+    <update id="updateIdentity" parameterType="com.ruoyi.wechat.domain.WeChatSession">
+        update sys_wechat_session
+        set self_username = #{selfUsername},
+            self_labels = #{selfLabels},
+            target_labels = #{targetLabels},
+            identity_confirmed = '1',
+            update_by = #{updateBy},
+            update_time = sysdate()
+        where session_id = #{sessionId}
+    </update>
+
+    <update id="deleteByIds">
+        update sys_wechat_session set del_flag = '2'
+        where user_id = #{userId} and session_id in
+        <foreach item="sessionId" collection="sessionIds" open="(" separator="," close=")">
+            #{sessionId}
+        </foreach>
+    </update>
+
+</mapper>

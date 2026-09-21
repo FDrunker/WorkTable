@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.wechat.mapper.WeChatAnalysisMapper">
+
+    <resultMap type="com.ruoyi.wechat.domain.WeChatAnalysis" id="WeChatAnalysisResult">
+        <result property="analysisId"       column="analysis_id"       />
+        <result property="sessionId"        column="session_id"        />
+        <result property="userId"           column="user_id"           />
+        <result property="chatName"         column="chat_name"         />
+        <result property="goal"             column="goal"              />
+        <result property="startTime"        column="start_time"        />
+        <result property="endTime"          column="end_time"          />
+        <result property="messageIdFrom"    column="message_id_from"   />
+        <result property="messageIdTo"      column="message_id_to"     />
+        <result property="messageCount"     column="message_count"     />
+        <result property="identityDesc"     column="identity_desc"     />
+        <result property="refsUsed"         column="refs_used"         />
+        <result property="resultJson"       column="result_json"       />
+        <result property="promptSnapshot"   column="prompt_snapshot"   />
+        <result property="crisis"           column="crisis"            />
+        <result property="crisisMessage"    column="crisis_message"    />
+        <result property="model"            column="model"             />
+        <result property="promptTokens"     column="prompt_tokens"     />
+        <result property="completionTokens" column="completion_tokens" />
+        <result property="durationMs"       column="duration_ms"       />
+        <result property="status"           column="status"            />
+        <result property="errorMsg"         column="error_msg"         />
+        <result property="delFlag"          column="del_flag"          />
+        <result property="createBy"         column="create_by"         />
+        <result property="createTime"       column="create_time"       />
+    </resultMap>
+
+    <sql id="selectAnalysisVo">
+        select analysis_id, session_id, user_id, chat_name, goal, start_time, end_time,
+               message_id_from, message_id_to, message_count, identity_desc, refs_used,
+               result_json, crisis, crisis_message, model, prompt_tokens, completion_tokens,
+               duration_ms, status, error_msg, del_flag, create_by, create_time
+        from sys_wechat_analysis
+    </sql>
+
+    <insert id="insertAnalysis" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis" useGeneratedKeys="true" keyProperty="analysisId">
+        insert into sys_wechat_analysis (
+            session_id, user_id, chat_name, goal, start_time, end_time,
+            message_id_from, message_id_to, message_count, identity_desc, refs_used,
+            result_json, prompt_snapshot, crisis, crisis_message, model,
+            prompt_tokens, completion_tokens, duration_ms, status, error_msg,
+            del_flag, create_by, create_time
+        ) values (
+            #{sessionId}, #{userId}, #{chatName}, #{goal}, #{startTime}, #{endTime},
+            #{messageIdFrom}, #{messageIdTo}, #{messageCount}, #{identityDesc}, #{refsUsed},
+            #{resultJson}, #{promptSnapshot}, #{crisis}, #{crisisMessage}, #{model},
+            #{promptTokens}, #{completionTokens}, #{durationMs}, #{status}, #{errorMsg},
+            '0', #{createBy}, sysdate()
+        )
+    </insert>
+
+    <!--
+      刻意不查 prompt_snapshot：它体积大（可能上百 KB），
+      而历史列表只需要展示分析结论。需要复现时再按 analysisId 单独取。
+    -->
+    <select id="selectById" resultMap="WeChatAnalysisResult">
+        <include refid="selectAnalysisVo"/>
+        where analysis_id = #{analysisId} and del_flag = '0'
+    </select>
+
+    <select id="selectBySession" resultMap="WeChatAnalysisResult">
+        select analysis_id, session_id, user_id, chat_name, goal, start_time, end_time,
+               message_id_from, message_id_to, message_count, identity_desc, refs_used,
+               result_json, crisis, crisis_message, model, prompt_tokens, completion_tokens,
+               duration_ms, status, error_msg, del_flag, create_by, create_time
+        from sys_wechat_analysis
+        where session_id = #{sessionId} and del_flag = '0'
+        order by analysis_id desc
+        limit #{limit}
+    </select>
+
+    <update id="deleteByIds">
+        update sys_wechat_analysis set del_flag = '2'
+        where user_id = #{userId} and analysis_id in
+        <foreach item="id" collection="analysisIds" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
+    <update id="updateResult" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis">
+        update sys_wechat_analysis
+        set identity_desc = #{identityDesc},
+            refs_used = #{refsUsed},
+            result_json = #{resultJson},
+            crisis = #{crisis},
+            crisis_message = #{crisisMessage},
+            model = #{model},
+            prompt_tokens = #{promptTokens},
+            completion_tokens = #{completionTokens},
+            duration_ms = #{durationMs},
+            status = #{status},
+            error_msg = #{errorMsg}
+        where analysis_id = #{analysisId}
+    </update>
+
+    <update id="updateFailure" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis">
+        update sys_wechat_analysis
+        set status = '1', error_msg = #{errorMsg}, duration_ms = #{durationMs}
+        where analysis_id = #{analysisId}
+    </update>
+
+</mapper>

@@ -25,3 +25,6 @@ export * from "./monitor/online";
 
 // 代码生成模块
 export * from "./tool/gen";
+
+// 微信聊天分析模块
+export * from "./wechat/chat";
