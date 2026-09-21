@@ -46,7 +46,7 @@ create table sys_wechat_message (
   sender_role       varchar(16)     default 'UNKNOWN'          comment '归一化角色 SELF/TARGET/OTHER/UNKNOWN',
   content           text                                       comment '清洗后内容',
   content_md5       char(32)        default ''                 comment '内容摘要，用于去重',
-  msg_kind          varchar(16)     default 'TEXT'             comment '消息种类 TEXT/QUOTE/MEDIA/CALL/OTHER',
+  msg_kind          varchar(16)     default 'TEXT'             comment '消息种类 TEXT/QUOTE/MEDIA/VOICE/STICKER/CALL/OTHER（VOICE、STICKER 只展示不参与分析）',
   analyzed          char(1)         default '0'                comment '是否已参与过分析（0未分析 1已分析）',
   analyzed_time     datetime                                   comment '首次参与分析的时间',
   analysis_id       bigint(20)      default null               comment '首次参与的分析ID',

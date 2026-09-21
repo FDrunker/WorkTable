@@ -37,11 +37,28 @@ public record CleanedMessage(int seq, String time, String rawSender, Role role, 
         TEXT,
         /** 引用/回复消息，含被引用内容，是重要的措辞证据 */
         QUOTE,
-        /** 媒体占位（图片/文件/链接/位置/小程序） */
+        /** 媒体占位（图片/文件/链接/位置/小程序），作为"发生过一次互动"的证据参与分析 */
         MEDIA,
+        /**
+         * 语音占位 —— 内容只有 {@code [语音]} 这一行，没有任何措辞。
+         *
+         * <p>它<b>要展示</b>在聊天记录里（用户需要看到当时发过语音），
+         * 但<b>不参与分析</b>：把一个纯占位符喂给模型只会占 token、引不出有效信息。
+         */
+        VOICE,
+        /** 动画表情占位 —— 与 {@link #VOICE} 同样只展示、不分析 */
+        STICKER,
         /** 通话记录 */
         CALL,
         /** 未知类型 */
-        OTHER
+        OTHER;
+
+        /**
+         * 是否只展示、不参与分析。
+         */
+        public boolean displayOnly()
+        {
+            return this == VOICE || this == STICKER;
+        }
     }
 }

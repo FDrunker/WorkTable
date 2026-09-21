@@ -26,9 +26,11 @@ import com.ruoyi.wechat.datasource.SourceStatus;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.IdentityConfirmRequest;
 import com.ruoyi.wechat.domain.SessionView;
+import com.ruoyi.wechat.domain.TextImportRequest;
 import com.ruoyi.wechat.domain.WeChatAnalysis;
 import com.ruoyi.wechat.service.WeChatArchiveService;
 import com.ruoyi.wechat.service.WechatStatusService;
+import com.ruoyi.wechat.service.WechatTextImportService;
 
 /**
  * 微信聊天界面接口。
@@ -38,7 +40,7 @@ import com.ruoyi.wechat.service.WechatStatusService;
  * 因此这里只剩三类只读或本地归档操作：
  * <ul>
  *   <li>环境自检与会话发现</li>
- *   <li>打开会话读取聊天记录（必要时做幂等同步）</li>
+ *   <li>导入文本 / 打开会话读取聊天记录（必要时做幂等同步）</li>
  *   <li>确认说话人映射、读取已保存的分析记录</li>
  * </ul>
  *
@@ -61,10 +63,14 @@ public class WechatChatController extends BaseController
 
     private final WechatStatusService statusService;
 
-    public WechatChatController(WeChatArchiveService archiveService, WechatStatusService statusService)
+    private final WechatTextImportService textImportService;
+
+    public WechatChatController(WeChatArchiveService archiveService, WechatStatusService statusService,
+            WechatTextImportService textImportService)
     {
         this.archiveService = archiveService;
         this.statusService = statusService;
+        this.textImportService = textImportService;
     }
 
     /**
@@ -125,6 +131,25 @@ public class WechatChatController extends BaseController
         }
 
         return AjaxResult.success(merged);
+    }
+
+    /**
+     * 导入粘贴的聊天记录文本。
+     *
+     * <p>这是数据来源的主入口：解析"昵称 / 时间 / 内容"三行格式的文本，
+     * 归档后直接返回聊天记录视图，前端不必再请求一次。
+     *
+     * <p>权限沿用「同步记录」（{@code wechat:message:sync}）：
+     * 导入的实质就是把一批消息写进归档，与同步同权，不必新增一个权限点。
+     */
+    @PreAuthorize("@ss.hasPermi('wechat:message:sync')")
+    @Log(title = "微信文本导入", businessType = BusinessType.OTHER)
+    @PostMapping("/text/import")
+    public AjaxResult importText(@RequestBody TextImportRequest request)
+    {
+        ChatDetail detail = textImportService.importText(getUserId(), request.getChatName(),
+                request.getText(), getUsername());
+        return AjaxResult.success(detail);
     }
 
     /**

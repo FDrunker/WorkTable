@@ -44,7 +44,7 @@ public class WeChatMessage extends BaseEntity
     /** 内容摘要 */
     private String contentMd5;
 
-    /** 消息种类 */
+    /** 消息种类 TEXT/QUOTE/MEDIA/VOICE/STICKER/CALL/OTHER */
     private String msgKind;
 
     /** 是否已参与过分析（0未分析 1已分析） */

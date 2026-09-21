@@ -4,7 +4,8 @@ import type {
   WechatAnalysis,
   WechatChatDetail,
   WechatSessionView,
-  WechatStatus
+  WechatStatus,
+  WechatTextImportRequest
 } from '@/types'
 
 /** 查询数据源与知识库状态 */
@@ -42,6 +43,20 @@ export function openWechatChat(params: {
     url: '/wechat/chat/open',
     method: 'get',
     params
+  })
+}
+
+/**
+ * 导入粘贴的聊天记录文本。
+ *
+ * 文本格式为每 3 行一条消息：昵称 / 时间 / 消息内容。
+ * 返回归档后的聊天记录，前端可直接渲染，不必再请求一次。
+ */
+export function importWechatText(data: WechatTextImportRequest): Promise<AjaxResult<WechatChatDetail>> {
+  return request({
+    url: '/wechat/text/import',
+    method: 'post',
+    data
   })
 }
 

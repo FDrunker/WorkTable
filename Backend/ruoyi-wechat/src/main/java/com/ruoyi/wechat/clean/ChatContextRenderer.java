@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>渲染格式刻意保持<b>高信息密度且可追溯</b>：每行都带时间戳与角色标签，
  * 这样模型引用"已知事实"时能够带上时间，也便于人工核对它有没有编造。
+ *
+ * <p>标注为"只展示"的消息（{@code [语音]}、{@code [动画表情]}）在这里被整条跳过：
+ * 它们会出现在聊天记录界面，但不进分析上下文。
  */
 @Component
 public class ChatContextRenderer
@@ -24,6 +27,11 @@ public class ChatContextRenderer
         String lastDate = null;
         for (CleanedMessage m : messages)
         {
+            if (m.kind().displayOnly())
+            {
+                // 语音 / 动画表情：只展示，不参与分析
+                continue;
+            }
             String date = extractDate(m.time());
             if (date != null && !date.equals(lastDate))
             {
@@ -54,6 +62,11 @@ public class ChatContextRenderer
         sb.append("总消息数：").append(result.size()).append('\n');
         result.roleCounts().forEach((role, count) ->
                 sb.append(label(role)).append("：").append(count).append(" 条\n"));
+        long displayOnly = result.messages().stream().filter(m -> m.kind().displayOnly()).count();
+        if (displayOnly > 0)
+        {
+            sb.append("（其中 ").append(displayOnly).append(" 条是语音/动画表情占位，只展示、未参与分析）\n");
+        }
         if (result.collapsedCount() > 0)
         {
             sb.append("（已折叠合并 ").append(result.collapsedCount()).append(" 条连续重复发言）\n");

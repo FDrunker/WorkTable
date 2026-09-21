@@ -74,6 +74,39 @@ class WechatMessageCleanerTest
 
         assertEquals(1, result.size());
         assertEquals(CleanedMessage.Kind.MEDIA, result.messages().get(0).kind());
+        assertFalse(result.messages().get(0).kind().displayOnly());
+    }
+
+    @Test
+    @DisplayName("语音与动画表情保留在归档里（界面上要看得见），但标记为只展示不分析")
+    void shouldKeepVoiceAndStickerAsDisplayOnly()
+    {
+        List<RawMessage> raw = msgs(
+                new RawMessage(0, "2026-04-01 10:00", "小美", "[语音]"),
+                new RawMessage(1, "2026-04-01 10:01", "me", "[动画表情]"),
+                new RawMessage(2, "2026-04-01 10:02", "小美", "在的"));
+
+        CleanResult result = clean(raw, identity(), false);
+
+        assertEquals(3, result.size(), "语音与动画表情不能被降噪丢掉");
+        assertEquals(0, result.droppedCount());
+        assertEquals(CleanedMessage.Kind.VOICE, result.messages().get(0).kind());
+        assertEquals(CleanedMessage.Kind.STICKER, result.messages().get(1).kind());
+        assertTrue(result.messages().get(0).kind().displayOnly());
+        assertTrue(result.messages().get(1).kind().displayOnly());
+        assertEquals(CleanedMessage.Kind.TEXT, result.messages().get(2).kind());
+    }
+
+    @Test
+    @DisplayName("静态 [表情] 仍然降噪：只有语音与动画表情要求保留展示")
+    void shouldStillDropPlainEmoji()
+    {
+        List<RawMessage> raw = msgs(new RawMessage(0, "2026-04-01 10:00", "小美", "[表情]"));
+
+        CleanResult result = clean(raw, identity(), false);
+
+        assertEquals(0, result.size());
+        assertEquals(1, result.droppedCount());
     }
 
     @Test

@@ -38,14 +38,30 @@
       </div>
 
       <div class="side-foot">
-        <el-tooltip :content="statusText" placement="top">
-          <el-tag :type="statusReady ? 'success' : 'warning'" size="small" effect="plain">
-            {{ statusReady ? '数据源就绪' : '数据源未就绪' }}
-          </el-tag>
+        <el-tooltip :content="importHint" placement="top">
+          <span class="import-wrap">
+            <el-button
+              type="primary"
+              size="small"
+              class="import-btn"
+              :disabled="!importEnabled"
+              @click="openImportDialog"
+            >
+              <el-icon><DocumentAdd /></el-icon>
+              <span>导入文本</span>
+            </el-button>
+          </span>
         </el-tooltip>
-        <el-button link size="small" @click="loadStatus">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <div class="side-status">
+          <el-tooltip :content="statusText" placement="top">
+            <el-tag :type="statusReady ? 'success' : 'warning'" size="small" effect="plain">
+              {{ statusReady ? '数据源就绪' : '数据源未就绪' }}
+            </el-tag>
+          </el-tooltip>
+          <el-button link size="small" @click="loadStatus">
+            <el-icon><Refresh /></el-icon>
+          </el-button>
+        </div>
       </div>
     </aside>
 
@@ -293,6 +309,42 @@
       </div>
     </aside>
 
+    <!-- ============ 导入文本对话框（数据来源：粘贴文本） ============ -->
+    <el-dialog v-model="importDialog" title="导入聊天记录文本" width="660px" top="5vh">
+      <el-alert type="info" :closable="false" show-icon class="dlg-alert"
+        title="每 3 行一条消息：第 1 行昵称、第 2 行时间、第 3 行消息内容。">
+        <div class="import-format">
+          时间支持 2026-04-01 19:02、2026/4/1 19:02、4月1日 19:02（省略年份按当年计算）。<br />
+          [语音] 与 [动画表情] 会照常显示在聊天记录里，但不参与分析。
+        </div>
+      </el-alert>
+
+      <el-form label-width="76px">
+        <el-form-item label="会话名称">
+          <el-input
+            v-model="importForm.chatName"
+            maxlength="60"
+            clearable
+            placeholder="可留空，留空时按文本内容自动识别"
+          />
+        </el-form-item>
+      </el-form>
+
+      <el-input
+        v-model="importForm.text"
+        type="textarea"
+        :rows="16"
+        resize="none"
+        class="import-textarea"
+        placeholder="在此粘贴聊天记录，例如：&#10;小美&#10;2026-04-01 19:02&#10;在吗？&#10;&#10;我&#10;2026-04-01 19:03&#10;在的"
+      />
+
+      <template #footer>
+        <el-button @click="importDialog = false">取消</el-button>
+        <el-button type="primary" :loading="importing" @click="confirmImport">确认并解析</el-button>
+      </template>
+    </el-dialog>
+
     <!-- ============ 说话人映射确认对话框 ============ -->
     <el-dialog v-model="identityDialog" title="确认「我」是哪个昵称" width="520px">
       <el-alert
@@ -325,16 +377,31 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { ArrowDown, ArrowRight, MagicStick, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
+import {
+  ArrowDown,
+  ArrowRight,
+  DocumentAdd,
+  MagicStick,
+  Refresh,
+  Search,
+  UserFilled
+} from '@element-plus/icons-vue'
 import {
   confirmWechatIdentity,
   getWechatStatus,
+  importWechatText,
   listWechatAnalysis,
   listWechatSessions,
   openWechatChat,
   syncWechatChat
 } from '@/api/wechat/chat'
-import type { WechatAnalysis, WechatAnalysisResult, WechatChatMessage, WechatSessionView } from '@/types'
+import type {
+  WechatAnalysis,
+  WechatAnalysisResult,
+  WechatChatDetail,
+  WechatChatMessage,
+  WechatSessionView
+} from '@/types'
 
 /** 左上角搜索关键字 */
 const keyword = ref('')
@@ -345,6 +412,10 @@ const syncing = ref(false)
 const identitySaving = ref(false)
 const identityDialog = ref(false)
 
+/** 导入文本对话框 */
+const importDialog = ref(false)
+const importing = ref(false)
+
 const sessions = ref<WechatSessionView[]>([])
 const activeSession = ref<WechatSessionView | null>(null)
 const messages = ref<WechatChatMessage[]>([])
@@ -354,6 +425,14 @@ const goal = ref('')
 
 const statusReady = ref(false)
 const statusText = ref('正在检测数据源…')
+/** 当前数据源标识：只有 text 支持导入文本 */
+const statusMode = ref('')
+
+const importForm = reactive<{ chatName: string; text: string }>({
+  chatName: '',
+  text: ''
+})
+
 /**
  * 调用 agent 的能力是否启用。
  *
@@ -361,6 +440,15 @@ const statusText = ref('正在检测数据源…')
  * 分析按钮据此置灰，避免用户点击后没有任何反馈。
  */
 const agentEnabled = ref(false)
+
+/** 当前数据源是否支持文本导入（未知时按支持处理，避免状态接口失败时按钮直接消失） */
+const importEnabled = computed(() => !statusMode.value || statusMode.value === 'text')
+
+const importHint = computed(() =>
+  importEnabled.value
+    ? '粘贴聊天记录，解析后归档展示'
+    : `当前数据源「${statusMode.value}」不支持文本导入，请把 wechat.datasource 设为 text`
+)
 
 const messageListRef = ref<HTMLElement | null>(null)
 
@@ -420,10 +508,12 @@ async function loadStatus() {
     const res = await getWechatStatus()
     statusReady.value = !!res.data?.ready
     statusText.value = res.data?.message || ''
+    statusMode.value = res.data?.mode || ''
     agentEnabled.value = !!res.data?.agentEnabled
   } catch {
     statusReady.value = false
     statusText.value = '无法获取数据源状态'
+    statusMode.value = ''
     agentEnabled.value = false
   }
 }
@@ -472,16 +562,68 @@ async function loadMessages(item: WechatSessionView) {
     if (!detail) {
       return
     }
-    messages.value = detail.messages || []
-    // 同步后后端可能已经创建了会话或刷新了计数，用最新数据回填
-    activeSession.value = detail.session
-    dirtyCount.value = Math.max((detail.total || 0) - messages.value.length, 0)
-    mergeSessionIntoList(detail.session)
-    await scrollToBottom()
+    await applyDetail(detail)
   } catch (e: any) {
     ElMessage.error(e?.message || '读取聊天记录失败')
   } finally {
     messageLoading.value = false
+  }
+}
+
+/**
+ * 用一次接口返回的会话详情刷新界面。
+ *
+ * 打开会话与导入文本返回的是同一种结构，因此共用这一段：
+ * 会话列表里就地更新（新会话插到最前），中栏换成新的聊天记录。
+ *
+ * 刻意不碰右栏的分析记录：调用方常常同时并发拉取历史分析，
+ * 在这里清空会把先返回的结果冲掉。
+ */
+async function applyDetail(detail: WechatChatDetail) {
+  messages.value = detail.messages || []
+  // 同步/导入后后端可能已经创建了会话或刷新了计数，用最新数据回填
+  activeSession.value = detail.session
+  mergeSessionIntoList(detail.session)
+  dirtyCount.value = Math.max((detail.total || 0) - messages.value.length, 0)
+  await scrollToBottom()
+}
+
+/** 打开导入文本对话框（每次都是干净的，不复用上一次粘贴的内容） */
+function openImportDialog() {
+  importForm.chatName = ''
+  importForm.text = ''
+  importDialog.value = true
+}
+
+/**
+ * 确认导入：把粘贴的文本交给后端解析并归档。
+ *
+ * 数据来源就是这段文本，不做任何外部调用；[语音] 与 [动画表情] 也会被归档，
+ * 因此导入后能在聊天记录里看到它们。
+ */
+async function confirmImport() {
+  const text = importForm.text.trim()
+  if (!text) {
+    ElMessage.warning('请先粘贴聊天记录')
+    return
+  }
+  importing.value = true
+  try {
+    const res = await importWechatText({ chatName: importForm.chatName.trim(), text })
+    const detail = res.data
+    if (!detail) {
+      ElMessage.error('导入失败：服务端没有返回聊天记录')
+      return
+    }
+    importDialog.value = false
+    await applyDetail(detail)
+    // 导入的可能是已经分析过的老会话，右栏照旧读一次历史
+    await loadHistory()
+    ElMessage.success(`已解析 ${messages.value.length} 条消息，当前会话共 ${detail.total} 条`)
+  } catch (e: any) {
+    ElMessage.error(e?.message || '文本解析失败')
+  } finally {
+    importing.value = false
   }
 }
 
@@ -650,7 +792,8 @@ function senderLabel(msg: WechatChatMessage) {
 
 function bubbleClass(msg: WechatChatMessage) {
   return {
-    media: msg.kind === 'MEDIA',
+    // 语音与动画表情和图片一样按"媒体占位"渲染：斜体灰字，一眼看出不是文字
+    media: msg.kind === 'MEDIA' || msg.kind === 'VOICE' || msg.kind === 'STICKER',
     quote: msg.kind === 'QUOTE'
   }
 }
@@ -812,12 +955,32 @@ $wechat-border: #d9d9d9;
   text-align: center;
 }
 
+/*
+  左下角：数据来源入口 + 数据源状态。
+  导入按钮占满整行，是这一角唯一的主操作；状态标签退到下面一行。
+*/
 .side-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-top: 1px solid $wechat-border;
+}
+
+/* tooltip 需要一个可包裹的元素，disabled 的按钮不触发鼠标事件 */
+.import-wrap {
+  display: block;
+}
+
+.import-btn {
+  width: 100%;
+}
+
+.side-status {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 10px;
-  border-top: 1px solid $wechat-border;
+  gap: 6px;
 }
 
 /* ---------------- 中间聊天区 ---------------- */
@@ -1195,6 +1358,16 @@ $wechat-border: #d9d9d9;
 
 .dlg-alert {
   margin-bottom: 14px;
+}
+
+.import-format {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.import-textarea {
+  font-family: Consolas, 'Courier New', monospace;
 }
 
 .full-width {

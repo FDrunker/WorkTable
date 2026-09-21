@@ -149,9 +149,11 @@ xss:
 
 # 微信聊天分析（恋爱军师）
 wechat:
-  # 数据源：mock（内置样例，无需外部依赖）| cli（调用本地 wechat-cli）
-  datasource: mock
+  # 数据源：text（粘贴文本，默认）| mock（内置样例）| cli（调用本地 wechat-cli）
+  # 界面左下角「导入文本」按「昵称 / 时间 / 消息内容」三行一条的格式解析并归档。
+  datasource: text
   cli:
+    # 仅 datasource=cli 时使用。
     # wechat-cli 可执行文件绝对路径。留空则依次尝试 WECHAT_CLI_BINARY 环境变量与 PATH。
     # 示例（Windows）: E:/home/zuijiu/.pure-npm-global/wechat-cli.cmd
     executable: ""
@@ -161,7 +163,8 @@ wechat:
     # 留空表示自动探测编码（UTF-8 失败回退 GBK）
     charset: ""
   clean:
-    # 丢弃表情/通话/撤回/系统提示等无措辞内容
+    # 丢弃静态表情/通话/撤回/系统提示等无措辞内容
+    # 注意 [语音] 与 [动画表情] 不在丢弃之列：它们会显示在聊天记录界面，只是不参与分析
     drop-noise: true
     # 连续同一人发言达到该条数时折叠合并，保留"刷屏"这一行为特征
     collapse-repeat-threshold: 5

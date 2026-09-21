@@ -7,9 +7,9 @@ import java.util.List;
  *
  * <p>当前提供三种实现：
  * <ul>
+ *   <li>{@code TextWechatDataSource} — 解析用户粘贴的聊天记录文本（<b>默认</b>）</li>
  *   <li>{@code MockWechatDataSource} — 内置样例，用于联调与自动化测试</li>
  *   <li>{@code CliWechatDataSource} — 调用本地 wechat-cli 命令行</li>
- *   <li>{@code UploadWechatDataSource} — 解析用户上传的聊天导出文件</li>
  * </ul>
  *
  * <p>实现类必须保证：<b>不修改任何本地数据，只读</b>。
@@ -17,7 +17,7 @@ import java.util.List;
 public interface WechatDataSource
 {
     /**
-     * 数据源标识，用于日志与前端展示（如 {@code cli}、{@code mock}、{@code upload}）。
+     * 数据源标识，用于日志与前端展示（如 {@code text}、{@code cli}、{@code mock}）。
      */
     String mode();
 

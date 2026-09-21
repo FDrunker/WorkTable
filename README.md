@@ -92,6 +92,20 @@ npm run build:prod   # 生产构建
 - **已移除前端**：`src/views/system/dept`、`src/views/system/post`、`src/api/system/dept.ts`、`src/api/system/post.ts`、`src/types/api/system/dept.ts`、`src/types/api/system/post.ts`，以及用户管理、角色管理、操作日志、在线用户、公告已读页面中的部门/岗位表单项与列。
 - **SQL**：`Backend/sql/ry_20260417.sql` 已删除 `sys_dept`、`sys_post`、`sys_role_dept`、`sys_user_post` 建表与初始化数据，删除 `sys_user.dept_id`、`sys_oper_log.dept_name`、`sys_role.data_scope`、`sys_role.dept_check_strictly` 列，并清理 `sys_menu` / `sys_role_menu` 中部门与岗位相关菜单与按钮权限（菜单 103、104 及 1016–1024）。
 
+## 微信聊天分析（ruoyi-wechat）
+
+聊天分析的**数据来源是用户粘贴的聊天记录文本**，不读取本地微信数据库，也不依赖任何外部命令：
+
+- **入口**：聊天分析页（`Frontend/src/views/wechat/chat/index.vue`）左下角「导入文本」。
+- **格式**：每 3 行一条消息 —— 昵称 / 时间 / 消息内容；消息内容可跨多行，组与组之间可空行。
+  时间支持 `2026-04-01 19:02`、`2026/4/1 19:02`、`2026年4月1日 19:02`、`4月1日 19:02`（省略年份按当年计算），
+  兼容 `下午7:02` 这类时段写法，统一归一化为 `yyyy-MM-dd HH:mm[:ss]`。
+- **语音与动画表情**：`[语音]`、`[动画表情]` 会照常归档并显示在聊天记录界面，但**不参与分析**
+  （对应 `CleanedMessage.Kind.VOICE` / `STICKER` 的 `displayOnly()`）。静态 `[表情]` 仍按降噪丢弃。
+- **幂等**：会话标识由会话名派生，重复粘贴同一段对话是追加去重，不会重复建会话。
+- **切换来源**：`wechat.datasource` 可选 `text`（默认）、`mock`（内置样例）、`cli`（本地 wechat-cli）；
+  只有 `text` 支持文本导入，其余取值下「导入文本」按钮会置灰并说明原因。
+
 ## 配置说明
 
 - 后端主配置：`Backend/ruoyi-admin/src/main/resources/application.yml`

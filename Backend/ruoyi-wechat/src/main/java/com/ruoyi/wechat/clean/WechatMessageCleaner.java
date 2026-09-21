@@ -17,12 +17,17 @@ import com.ruoyi.wechat.identity.ChatIdentity;
  *
  * <p>处理顺序（顺序不可调换）：
  * <ol>
- *   <li><b>类型识别</b>：区分文本 / 引用 / 媒体 / 通话 / 未知</li>
- *   <li><b>降噪</b>：丢弃表情、通话、撤回、系统提示、纯符号</li>
+ *   <li><b>类型识别</b>：区分文本 / 引用 / 媒体 / 语音 / 动画表情 / 通话 / 未知</li>
+ *   <li><b>降噪</b>：丢弃静态表情、通话、撤回、系统提示、纯符号</li>
  *   <li><b>脱敏</b>：手机号、身份证、银行卡打码（数据要出境到云端 API）</li>
  *   <li><b>折叠</b>：连续同一人刷屏合并，但<b>保留"刷屏"这一行为特征</b></li>
  *   <li><b>裁剪</b>：按字符预算截断，并明确标注上下文不完整</li>
  * </ol>
+ *
+ * <p>其中 {@code [语音]} 与 {@code [动画表情]} 是<b>只展示、不分析</b>的：
+ * 它们要出现在聊天记录界面里，但不能进入分析上下文
+ * （见 {@link CleanedMessage.Kind#displayOnly()}）。
+ * 因此降噪并不等于"从归档里删掉" —— 归档内容与送分析的上下文是两回事。
  *
  * <p>第 4 步是刻意的设计：军师 skill 明确要求"优先看持续主动、兑现、投入"，
  * 连续刷屏本身就是投入度的信号，因此只能压缩表示，不能消除。
@@ -31,7 +36,18 @@ import com.ruoyi.wechat.identity.ChatIdentity;
 public class WechatMessageCleaner
 {
     /** 媒体占位标记 */
-    private static final Pattern MEDIA_PATTERN = Pattern.compile("^\\[(图片|文件|链接|小程序|位置|视频|语音|动画表情)\\]");
+    private static final Pattern MEDIA_PATTERN = Pattern.compile("^\\[(图片|文件|链接|小程序|位置|视频)\\]");
+
+    /**
+     * 语音占位。
+     *
+     * <p>只展示、不分析：聊天记录里必须看得到"发过语音"，但一条纯占位符
+     * 对分析没有任何信息量。
+     */
+    private static final Pattern VOICE_PATTERN = Pattern.compile("^\\[语音\\]");
+
+    /** 动画表情占位 —— 与语音同样只展示、不分析 */
+    private static final Pattern STICKER_PATTERN = Pattern.compile("^\\[动画表情\\]");
 
     /** 通话记录 */
     private static final Pattern CALL_PATTERN = Pattern.compile("^\\[通话\\]|已取消通话|对方已取消|通话时长");
@@ -135,6 +151,10 @@ public class WechatMessageCleaner
 
     /**
      * 消息分类。
+     *
+     * <p>注意 {@code [语音]} 与 {@code [动画表情]} 走的是"保留但标记为只展示"的分支，
+     * 而不是降噪丢弃：它们在聊天记录界面里必须看得到，只是不参与分析。
+     * 也因此它们必须在普通媒体占位之前判定，否则会被当成"发生过一次互动"的媒体证据。
      */
     private Kind0 classify(String content)
     {
@@ -143,8 +163,17 @@ public class WechatMessageCleaner
             // 通话记录本身无措辞证据，且军师不需要通话元数据
             return new Kind0(CleanedMessage.Kind.CALL, true);
         }
-        if ("[表情]".equals(content) || "[动画表情]".equals(content))
+        if (VOICE_PATTERN.matcher(content).find())
         {
+            return new Kind0(CleanedMessage.Kind.VOICE, false);
+        }
+        if (STICKER_PATTERN.matcher(content).find())
+        {
+            return new Kind0(CleanedMessage.Kind.STICKER, false);
+        }
+        if ("[表情]".equals(content))
+        {
+            // 静态表情只是符号，展示价值也低，维持降噪
             return new Kind0(CleanedMessage.Kind.OTHER, true);
         }
         if (content.contains("撤回"))

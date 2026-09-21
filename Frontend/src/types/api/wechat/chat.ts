@@ -4,7 +4,12 @@ import type { BaseEntity } from '../common'
 export interface WechatStatus {
   /** 数据源是否就绪 */
   ready: boolean
-  /** 数据源标识：mock / cli */
+  /**
+   * 数据源标识。
+   *
+   * `text` = 粘贴文本（默认）；`mock` = 内置样例；`cli` = 本地 wechat-cli。
+   * 只有 `text` 支持「导入文本」。
+   */
   mode: string
   /** 人类可读说明，未就绪时含修复建议 */
   message: string
@@ -59,10 +64,22 @@ export interface WechatChatMessage {
   /** 原始发送者标签 */
   senderRaw: string
   content: string
-  /** TEXT / QUOTE / MEDIA / CALL / OTHER */
+  /**
+   * TEXT / QUOTE / MEDIA / VOICE / STICKER / CALL / OTHER。
+   *
+   * VOICE（[语音]）与 STICKER（[动画表情]）只在聊天记录里展示，不参与分析。
+   */
   kind: string
   /** 是否已参与过分析 */
   analyzed: boolean
+}
+
+/** 文本导入请求：格式为每 3 行一条消息 —— 昵称 / 时间 / 消息内容 */
+export interface WechatTextImportRequest {
+  /** 会话名，可留空：留空时由后端按文本内容自动识别 */
+  chatName?: string
+  /** 粘贴的聊天记录原文 */
+  text: string
 }
 
 /** 打开会话的返回 */
