@@ -9,8 +9,46 @@
  * 用法：node scripts/verify-sfc.mjs <文件...>
  */
 import { readFileSync, existsSync } from 'node:fs'
-import { resolve, dirname } from 'node:path'
+import { resolve, dirname, extname } from 'node:path'
 import { parse, compileScript, compileTemplate } from '@vue/compiler-sfc'
+
+/**
+ * 校验单个 .ts 文件：用 TypeScript 编译器 API 做语法分析。
+ *
+ * 刻意不用 esbuild：即使调用 transform API，它底层仍需要启动服务进程，
+ * 在本沙箱里会因禁止命名管道而报 spawn EPERM。
+ * typescript 的 transpileModule 完全在进程内完成，不 spawn 任何子进程。
+ */
+async function verifyTs(abs, errors) {
+  try {
+    const ts = (await import('typescript')).default
+    const source = readFileSync(abs, 'utf8')
+    const result = ts.transpileModule(source, {
+      fileName: abs,
+      reportDiagnostics: true,
+      compilerOptions: {
+        target: ts.ScriptTarget.ESNext,
+        module: ts.ModuleKind.ESNext,
+        isolatedModules: true
+      }
+    })
+    const diags = result.diagnostics || []
+    for (const d of diags) {
+      // 只报语法级错误；类型错误交给 vue-tsc，这里不重复
+      if (d.category === ts.DiagnosticCategory.Error) {
+        const msg = ts.flattenDiagnosticMessageText(d.messageText, ' ')
+        let where = ''
+        if (d.file && d.start != null) {
+          const pos = d.file.getLineAndCharacterOfPosition(d.start)
+          where = ` (第 ${pos.line + 1} 行)`
+        }
+        errors.push(`TS 语法${where}: ${msg}`)
+      }
+    }
+  } catch (e) {
+    errors.push(`TS 分析失败: ${e.message}`)
+  }
+}
 
 const files = process.argv.slice(2)
 if (files.length === 0) {
@@ -23,49 +61,49 @@ let failed = 0
 for (const file of files) {
   const abs = resolve(file)
   const errors = []
+  const isTs = ['.ts', '.mts', '.js', '.mjs'].includes(extname(abs))
 
   try {
-    const source = readFileSync(abs, 'utf8')
-    const { descriptor, errors: parseErrors } = parse(source, { filename: abs })
-    parseErrors.forEach((e) => errors.push(`SFC 解析: ${e.message}`))
+    if (isTs) {
+      await verifyTs(abs, errors)
+    } else {
+      const source = readFileSync(abs, 'utf8')
+      const { descriptor, errors: parseErrors } = parse(source, { filename: abs })
+      parseErrors.forEach((e) => errors.push(`SFC 解析: ${e.message}`))
 
-    // script setup：语法与宏使用是否正确
-    if (descriptor.scriptSetup || descriptor.script) {
-      try {
-        compileScript(descriptor, { id: abs })
-      } catch (e) {
-        errors.push(`script 编译: ${e.message}`)
+      // script setup：语法与宏使用是否正确
+      if (descriptor.scriptSetup || descriptor.script) {
+        try {
+          compileScript(descriptor, { id: abs })
+        } catch (e) {
+          errors.push(`script 编译: ${e.message}`)
+        }
       }
-    }
 
-    // template：表达式绑定、指令语法
-    if (descriptor.template) {
-      const result = compileTemplate({
-        source: descriptor.template.content,
-        filename: abs,
-        id: abs,
-        compilerOptions: { mode: 'module' }
-      })
-      result.errors.forEach((e) => {
-        errors.push(`模板: ${typeof e === 'string' ? e : e.message}`)
-      })
-    }
+      // template：表达式绑定、指令语法
+      if (descriptor.template) {
+        const result = compileTemplate({
+          source: descriptor.template.content,
+          filename: abs,
+          id: abs,
+          compilerOptions: { mode: 'module' }
+        })
+        result.errors.forEach((e) => {
+          errors.push(`模板: ${typeof e === 'string' ? e : e.message}`)
+        })
+      }
 
-    // 静态检查相对导入是否存在（编译期不报、运行时才炸的常见问题）
-    const scriptContent = (descriptor.scriptSetup?.content || '') + (descriptor.script?.content || '')
-    const importRe = /from\s+['"](\.[^'"]+)['"]/g
-    let m
-    while ((m = importRe.exec(scriptContent)) !== null) {
-      const spec = m[1]
-      const base = dirname(abs)
-      const candidates = [
-        spec,
-        `${spec}.ts`,
-        `${spec}.vue`,
-        `${spec}/index.ts`
-      ]
-      if (!candidates.some((c) => existsSync(resolve(base, c)))) {
-        errors.push(`相对导入不存在: ${spec}`)
+      // 静态检查相对导入是否存在（编译期不报、运行时才炸的常见问题）
+      const scriptContent = (descriptor.scriptSetup?.content || '') + (descriptor.script?.content || '')
+      const importRe = /from\s+['"](\.[^'"]+)['"]/g
+      let m
+      while ((m = importRe.exec(scriptContent)) !== null) {
+        const spec = m[1]
+        const base = dirname(abs)
+        const candidates = [spec, `${spec}.ts`, `${spec}.vue`, `${spec}/index.ts`]
+        if (!candidates.some((c) => existsSync(resolve(base, c)))) {
+          errors.push(`相对导入不存在: ${spec}`)
+        }
       }
     }
   } catch (e) {
@@ -76,6 +114,8 @@ for (const file of files) {
     failed++
     console.error(`✗ ${file}`)
     errors.forEach((e) => console.error(`    ${e}`))
+  } else if (isTs) {
+    console.log(`✓ ${file}  (TS 语法通过)`)
   } else {
     const sfc = parse(readFileSync(abs, 'utf8'), { filename: abs }).descriptor
     const tplLines = (sfc.template?.content || '').split('\n').length

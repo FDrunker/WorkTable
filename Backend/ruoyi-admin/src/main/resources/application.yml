@@ -15,8 +15,9 @@ ruoyi:
 
 # 开发环境配置
 server:
-  # 服务器的HTTP端口，默认为8080
-  port: 8080
+  # 服务器的HTTP端口。脚手架默认 8080，本机该端口长期被其他进程占用，
+  # 故改为 8090；如需临时覆盖可用 --server.port=xxxx 启动参数。
+  port: 8090
   servlet:
     # 应用的访问路径
     context-path: /
