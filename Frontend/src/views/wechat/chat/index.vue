@@ -922,6 +922,12 @@ async function scrollToBottom() {
 </script>
 
 <style scoped lang="scss">
+@use 'sass:color';
+
+/*
+  取色统一走 color.adjust：全局的 darken() 已被 Dart Sass 标记为弃用，并会在 3.0 移除。
+  color.adjust($c, $lightness: -N%) 与 darken($c, N%) 等价。
+*/
 $wechat-bg: #ededed;
 $wechat-side: #e6e5e5;
 $wechat-green: #95ec69;
@@ -950,7 +956,7 @@ $wechat-border: #d9d9d9;
 
 .side-search {
   padding: 10px;
-  background: darken($wechat-side, 3%);
+  background: color.adjust($wechat-side, $lightness: -3%);
 }
 
 .side-body {
@@ -967,11 +973,11 @@ $wechat-border: #d9d9d9;
   transition: background 0.15s;
 
   &:hover {
-    background: darken($wechat-side, 5%);
+    background: color.adjust($wechat-side, $lightness: -5%);
   }
 
   &.active {
-    background: darken($wechat-side, 10%);
+    background: color.adjust($wechat-side, $lightness: -10%);
   }
 }
 
