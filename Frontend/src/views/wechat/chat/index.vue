@@ -67,7 +67,7 @@
               <el-icon><Refresh /></el-icon>
               <span>同步记录</span>
             </el-button>
-            <el-button type="primary" size="small" :loading="analyzing" @click="runAnalysis">
+            <el-button type="primary" size="small" class="analyze-btn" @click="runAnalysis">
               <el-icon><MagicStick /></el-icon>
               <span>分析</span>
               <span v-if="unanalyzedCount > 0" class="btn-badge">{{ unanalyzedCount }}</span>
@@ -167,13 +167,7 @@
             <template v-if="unanalyzedCount > 0">待分析 {{ unanalyzedCount }} 条</template>
             <template v-else>没有未分析的记录</template>
           </span>
-          <el-button
-            type="primary"
-            size="small"
-            :disabled="!activeSession || !activeSession.sessionId || unanalyzedCount === 0 || analyzing"
-            :loading="analyzing"
-            @click="runAnalysis"
-          >
+          <el-button type="primary" size="small" class="analyze-btn" @click="runAnalysis">
             分析未分析记录
           </el-button>
         </div>
@@ -310,10 +304,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { ArrowDown, ArrowRight, MagicStick, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
 import {
-  analyzeWechatChat,
   confirmWechatIdentity,
   getWechatStatus,
   listWechatAnalysis,
@@ -329,7 +322,6 @@ const sessionLoading = ref(false)
 const messageLoading = ref(false)
 const historyLoading = ref(false)
 const syncing = ref(false)
-const analyzing = ref(false)
 const identitySaving = ref(false)
 const identityDialog = ref(false)
 
@@ -492,41 +484,17 @@ async function syncMessages() {
 }
 
 /**
- * 执行分析 —— 只把未分析过的记录发给 agent。
+ * 分析入口 —— 当前按要求保留按钮，但点击不执行任何动作。
+ *
+ * 刻意不做的事：
+ * - 不调用后端分析接口，因此不会有任何聊天记录被发送出去
+ * - 不弹出任何提示，点击后界面保持原样
+ *
+ * 已归档的记录与历史分析结果仍由 loadHistory() 正常读取展示，
+ * 所以右栏在未触发分析时可以照常查看过去的结果。
  */
-async function runAnalysis() {
-  const item = activeSession.value
-  if (!item?.sessionId) {
-    ElMessage.warning('请先同步该会话，归档后才能分析')
-    return
-  }
-  if (unanalyzedCount.value === 0) {
-    ElMessage.info('没有未分析过的记录')
-    return
-  }
-
-  analyzing.value = true
-  try {
-    const res: any = await analyzeWechatChat({ sessionId: item.sessionId, goal: goal.value })
-    const analysis: WechatAnalysis | undefined = res?.analysis
-    if (analysis) {
-      analysisList.value = [analysis, ...analysisList.value]
-      expandedId.value = analysis.analysisId
-    }
-    const remaining = res?.remaining ?? 0
-    ElMessage.success(
-      res?.hasMore
-        ? `分析完成，已消费未分析记录。还有 ${remaining} 条未分析，可再次点击继续`
-        : '分析完成'
-    )
-    // 刷新会话计数与消息上的"已分析"标记
-    await refreshSessionCounters()
-    await loadMessages(activeSession.value!)
-  } catch (e: any) {
-    ElMessage.error(e?.message || '分析失败')
-  } finally {
-    analyzing.value = false
-  }
+function runAnalysis() {
+  // 分析暂未启用：保留入口，点击无反应
 }
 
 /** 读取历史分析记录（不触发新分析） */
@@ -547,20 +515,6 @@ async function loadHistory() {
     analysisList.value = []
   } finally {
     historyLoading.value = false
-  }
-}
-
-/** 分析后重新拉会话列表，让计数与未分析徽标保持准确 */
-async function refreshSessionCounters() {
-  try {
-    const res = await listWechatSessions()
-    sessions.value = res.data || []
-    const current = sessions.value.find((s: WechatSessionView) => s.chatUsername === activeUsername.value)
-    if (current) {
-      activeSession.value = current
-    }
-  } catch {
-    /* 计数刷新失败不影响主流程 */
   }
 }
 

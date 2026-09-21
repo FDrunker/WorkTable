@@ -5,12 +5,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * 微信模块配置，对应 application.yml 中的 {@code wechat.*}。
+ *
+ * <p>调用 agent 的能力（LLM 客户端、军师知识库）已整体移除，
+ * 因此这里不再有 {@code llm.*} 与 {@code skill.*} 配置项。
  */
 @Component
 @ConfigurationProperties(prefix = "wechat")
 public class WechatProperties
 {
-    /** 数据源类型：mock | cli | upload */
+    /** 数据源类型：mock | cli */
     private String datasource = "mock";
 
     /** 命令行数据源配置 */
@@ -18,12 +21,6 @@ public class WechatProperties
 
     /** 清洗配置 */
     private Clean clean = new Clean();
-
-    /** 军师 skill 配置 */
-    private Skill skill = new Skill();
-
-    /** LLM 配置 */
-    private Llm llm = new Llm();
 
     public static class Cli
     {
@@ -94,37 +91,14 @@ public class WechatProperties
         /** 折叠连续同一人消息的阈值，超出的重复内容会被合并；<=1 表示不折叠 */
         private int collapseRepeatThreshold = 5;
 
-        /** 是否对手机号/身份证/银行卡做脱敏。发给云端 API 前建议保持开启 */
+        /** 是否对手机号/身份证/银行卡做脱敏 */
         private boolean maskSensitive = true;
 
-        /** 送入 LLM 的上下文字符预算 */
+        /** 单条消息渲染时的上下文字符预算 */
         private int contextCharBudget = 40000;
-
-        /** 单次分析最多处理多少条未分析消息 */
-        private int maxUnanalyzedPerAnalysis = 500;
 
         /** 前端聊天记录每页条数 */
         private int messagePageSize = 50;
-
-        public int getMaxUnanalyzedPerAnalysis()
-        {
-            return maxUnanalyzedPerAnalysis;
-        }
-
-        public void setMaxUnanalyzedPerAnalysis(int maxUnanalyzedPerAnalysis)
-        {
-            this.maxUnanalyzedPerAnalysis = maxUnanalyzedPerAnalysis;
-        }
-
-        public int getMessagePageSize()
-        {
-            return messagePageSize;
-        }
-
-        public void setMessagePageSize(int messagePageSize)
-        {
-            this.messagePageSize = messagePageSize;
-        }
 
         public boolean isDropNoise()
         {
@@ -165,139 +139,15 @@ public class WechatProperties
         {
             this.contextCharBudget = contextCharBudget;
         }
-    }
 
-    public static class Skill
-    {
-        /** classpath 下 skill 资源根目录 */
-        private String location = "classpath:skill/";
-
-        /** 单次分析最多加载几篇参考文档 */
-        private int maxReferences = 3;
-
-        public String getLocation()
+        public int getMessagePageSize()
         {
-            return location;
+            return messagePageSize;
         }
 
-        public void setLocation(String location)
+        public void setMessagePageSize(int messagePageSize)
         {
-            this.location = location;
-        }
-
-        public int getMaxReferences()
-        {
-            return maxReferences;
-        }
-
-        public void setMaxReferences(int maxReferences)
-        {
-            this.maxReferences = maxReferences;
-        }
-    }
-
-    public static class Llm
-    {
-        /** OpenAI 兼容接口的 base url，例如 https://api.deepseek.com */
-        private String baseUrl = "";
-
-        /** API Key。建议用环境变量注入，不要提交到仓库 */
-        private String apiKey = "";
-
-        /** 模型名 */
-        private String model = "deepseek-chat";
-
-        private double temperature = 0.7;
-
-        private int maxTokens = 4096;
-
-        /** 建立连接超时（毫秒） */
-        private int connectTimeoutMs = 10000;
-
-        /** 读取超时（毫秒）。长文分析很容易超过默认值 */
-        private int readTimeoutMs = 180000;
-
-        /** 失败重试次数（仅对 429 / 5xx 生效，不对 4xx 重试） */
-        private int maxRetries = 2;
-
-        public String getBaseUrl()
-        {
-            return baseUrl;
-        }
-
-        public void setBaseUrl(String baseUrl)
-        {
-            this.baseUrl = baseUrl;
-        }
-
-        public String getApiKey()
-        {
-            return apiKey;
-        }
-
-        public void setApiKey(String apiKey)
-        {
-            this.apiKey = apiKey;
-        }
-
-        public String getModel()
-        {
-            return model;
-        }
-
-        public void setModel(String model)
-        {
-            this.model = model;
-        }
-
-        public double getTemperature()
-        {
-            return temperature;
-        }
-
-        public void setTemperature(double temperature)
-        {
-            this.temperature = temperature;
-        }
-
-        public int getMaxTokens()
-        {
-            return maxTokens;
-        }
-
-        public void setMaxTokens(int maxTokens)
-        {
-            this.maxTokens = maxTokens;
-        }
-
-        public int getConnectTimeoutMs()
-        {
-            return connectTimeoutMs;
-        }
-
-        public void setConnectTimeoutMs(int connectTimeoutMs)
-        {
-            this.connectTimeoutMs = connectTimeoutMs;
-        }
-
-        public int getReadTimeoutMs()
-        {
-            return readTimeoutMs;
-        }
-
-        public void setReadTimeoutMs(int readTimeoutMs)
-        {
-            this.readTimeoutMs = readTimeoutMs;
-        }
-
-        public int getMaxRetries()
-        {
-            return maxRetries;
-        }
-
-        public void setMaxRetries(int maxRetries)
-        {
-            this.maxRetries = maxRetries;
+            this.messagePageSize = messagePageSize;
         }
     }
 
@@ -329,25 +179,5 @@ public class WechatProperties
     public void setClean(Clean clean)
     {
         this.clean = clean;
-    }
-
-    public Skill getSkill()
-    {
-        return skill;
-    }
-
-    public void setSkill(Skill skill)
-    {
-        this.skill = skill;
-    }
-
-    public Llm getLlm()
-    {
-        return llm;
-    }
-
-    public void setLlm(Llm llm)
-    {
-        this.llm = llm;
     }
 }

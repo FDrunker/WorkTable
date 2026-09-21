@@ -33,16 +33,12 @@ public interface WeChatMessageMapper
     int countMessages(@Param("sessionId") Long sessionId, @Param("analyzed") String analyzed);
 
     /**
-     * 查询未分析的消息，按时间升序，用于送给军师。
+     * 查询未分析的消息，按时间升序。
      *
-     * @param limit 上限，防止一次送入过多消息
+     * <p>保留此方法是为了将来接入其他分析方式时能直接取到"待处理"的记录集合，
+     * 当前模块内不再有调用方（调用 agent 的链路已移除）。
      */
     List<WeChatMessage> selectUnanalyzed(@Param("sessionId") Long sessionId, @Param("limit") int limit);
-
-    /**
-     * 把一批消息标记为已分析，并记录对应的分析ID。
-     */
-    int markAnalyzed(@Param("messageIds") List<Long> messageIds, @Param("analysisId") Long analysisId);
 
     /**
      * 按原始标签批量回写归一化角色。
@@ -55,6 +51,4 @@ public interface WeChatMessageMapper
      */
     int updateSenderRoleByLabel(@Param("sessionId") Long sessionId, @Param("rawLabel") String rawLabel,
             @Param("role") String role);
-
-    int countUnanalyzed(@Param("sessionId") Long sessionId);
 }

@@ -164,29 +164,12 @@ wechat:
     drop-noise: true
     # 连续同一人发言达到该条数时折叠合并，保留"刷屏"这一行为特征
     collapse-repeat-threshold: 5
-    # 手机号/身份证/银行卡脱敏。数据要发送到云端 API，建议保持开启
+    # 手机号/身份证/银行卡脱敏
     mask-sensitive: true
-    # 送入 LLM 的上下文字符预算
+    # 单条消息渲染的上下文字符预算
     context-char-budget: 40000
-    # 单次分析最多处理多少条未分析消息（超出的部分下次分析继续）
-    max-unanalyzed-per-analysis: 500
     # 前端聊天记录每页条数
     message-page-size: 50
-  skill:
-    # 军师知识库位置。需把 goutoujunshi 的 SKILL.md 与 references/ 放到该目录下
-    location: classpath:skill/
-    max-references: 3
-  llm:
-    # OpenAI 兼容接口。DeepSeek: https://api.deepseek.com ；通义: https://dashscope.aliyuncs.com/compatible-mode
-    # 本地 Ollama: http://localhost:11434
-    base-url: ""
-    # 生产环境请用环境变量注入，不要提交真实 Key
-    api-key: ""
-    model: deepseek-chat
-    temperature: 0.7
-    max-tokens: 4096
-    connect-timeout-ms: 10000
-    # 长文分析耗时较长，读超时需要放宽
-    read-timeout-ms: 180000
-    # 仅对 429 / 5xx 重试，不对 4xx 重试
-    max-retries: 2
+
+# 说明：调用 agent（LLM 客户端、军师知识库）的能力已从本模块移除。
+# 如需接入，请另行实现，并在此处补充对应配置。

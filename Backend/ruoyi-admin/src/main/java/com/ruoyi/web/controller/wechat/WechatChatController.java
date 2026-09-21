@@ -1,10 +1,11 @@
 package com.ruoyi.web.controller.wechat;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,55 +23,64 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.wechat.datasource.ChatSession;
 import com.ruoyi.wechat.datasource.SourceStatus;
-import com.ruoyi.wechat.domain.AnalysisTriggerRequest;
-import com.ruoyi.wechat.domain.AnalysisTriggerResult;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.IdentityConfirmRequest;
 import com.ruoyi.wechat.domain.SessionView;
 import com.ruoyi.wechat.domain.WeChatAnalysis;
-import com.ruoyi.wechat.service.AnalysisService;
 import com.ruoyi.wechat.service.WeChatArchiveService;
+import com.ruoyi.wechat.service.WechatStatusService;
 
 /**
  * 微信聊天界面接口。
  *
- * <p>严格对应界面上的三个动作，且职责分离：
+ * <p><b>本控制器不再包含任何调用 agent 的接口。</b>
+ * 调用 agent 的能力已从本模块整体移除，后续由其他方式接入。
+ * 因此这里只剩三类只读或本地归档操作：
  * <ul>
- *   <li><b>打开会话</b> {@code GET /chat/open} —— 只读归档的聊天记录，不调用 LLM</li>
- *   <li><b>历史分析</b> {@code GET /analysis/list} —— 读库，不调用 LLM</li>
- *   <li><b>点击分析</b> {@code POST /chat/analyze} —— 只有这条路径会调 LLM，
- *       且只发送 {@code analyzed = '0'} 的消息</li>
+ *   <li>环境自检与会话发现</li>
+ *   <li>打开会话读取聊天记录（必要时做幂等同步）</li>
+ *   <li>确认说话人映射、读取已保存的分析记录</li>
  * </ul>
+ *
+ * <p>{@code /analysis/list} 与 {@code /analysis/{id}} 保留：它们只读数据库，
+ * 用于展示此前已保存的分析结果，不产生任何外部调用。
  */
 @RestController
 @RequestMapping("/wechat")
 public class WechatChatController extends BaseController
 {
-    /** 单次分析最多处理多少条未分析消息的硬上限 */
-    private static final int ANALYSIS_LIMIT_HARD_CAP = 2000;
+    /**
+     * agent 调用能力开关。
+     *
+     * <p>置为 false 时 {@code /chat/analyze} 返回明确的"未启用"提示，
+     * 而不是让前端以为请求成功或静默失败。
+     */
+    private static final boolean AGENT_INVOCATION_ENABLED = false;
 
     private final WeChatArchiveService archiveService;
 
-    private final AnalysisService analysisService;
+    private final WechatStatusService statusService;
 
-    public WechatChatController(WeChatArchiveService archiveService, AnalysisService analysisService)
+    public WechatChatController(WeChatArchiveService archiveService, WechatStatusService statusService)
     {
         this.archiveService = archiveService;
-        this.analysisService = analysisService;
+        this.statusService = statusService;
     }
 
     /**
-     * 数据源与知识库自检。
+     * 数据源自检。
      */
     @PreAuthorize("@ss.hasPermi('wechat:session:list')")
     @GetMapping("/status")
     public AjaxResult status()
     {
-        SourceStatus status = analysisService.status();
-        Map<String, Object> data = new HashMap<>();
+        SourceStatus status = statusService.status();
+        Map<String, Object> data = new LinkedHashMap<>();
         data.put("ready", status.ready());
         data.put("mode", status.mode());
         data.put("message", status.message());
+        // 明确告知前端调用 agent 的能力当前不可用，避免用户反复点击
+        data.put("agentEnabled", AGENT_INVOCATION_ENABLED);
         return AjaxResult.success(data);
     }
 
@@ -88,7 +98,7 @@ public class WechatChatController extends BaseController
         List<SessionView> archived = archiveService.listSessions(userId);
 
         List<Map<String, Object>> merged = new ArrayList<>();
-        java.util.Set<String> archivedUsernames = new java.util.HashSet<>();
+        Set<String> archivedUsernames = new LinkedHashSet<>();
         for (SessionView s : archived)
         {
             archivedUsernames.add(s.chatUsername());
@@ -98,7 +108,7 @@ public class WechatChatController extends BaseController
         // 数据源不可用时只是少一批候选，不应该让整个列表接口失败
         try
         {
-            List<ChatSession> discovered = archiveService.discoverSessions(
+            List<ChatSession> discovered = statusService.discoverSessions(
                     Math.min(Math.max(discoverLimit, 1), 200));
             for (ChatSession c : discovered)
             {
@@ -106,22 +116,7 @@ public class WechatChatController extends BaseController
                 {
                     continue;
                 }
-                Map<String, Object> item = new LinkedHashMap<>();
-                item.put("sessionId", null);
-                item.put("chatUsername", c.username());
-                item.put("displayName", c.displayName());
-                item.put("group", c.group());
-                item.put("identityConfirmed", false);
-                item.put("selfLabels", List.of());
-                item.put("targetLabels", List.of());
-                item.put("msgCount", 0);
-                item.put("unanalyzedCount", 0);
-                item.put("analysisCount", 0);
-                item.put("lastTime", c.lastTime());
-                item.put("lastMessage", c.lastMessage());
-                item.put("lastSyncTime", null);
-                item.put("archived", false);
-                merged.add(item);
+                merged.add(toDiscoveredMap(c));
             }
         }
         catch (Exception e)
@@ -135,7 +130,7 @@ public class WechatChatController extends BaseController
     /**
      * 打开会话：按需同步后返回聊天记录。
      *
-     * <p>{@code sync=true} 时会先拉取一次新消息（幂等），但<b>不会</b>触发任何分析。
+     * <p>{@code sync=true} 时会先拉取一次新消息（幂等），不涉及任何外部模型调用。
      */
     @PreAuthorize("@ss.hasPermi('wechat:message:list')")
     @GetMapping("/chat/open")
@@ -153,7 +148,7 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 手动触发同步（不分析）。
+     * 手动触发同步（只取数落库）。
      */
     @PreAuthorize("@ss.hasPermi('wechat:message:sync')")
     @Log(title = "微信记录同步", businessType = BusinessType.OTHER)
@@ -172,7 +167,7 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 确认说话人映射。
+     * 确认说话人映射，并回写历史消息的角色。
      */
     @PreAuthorize("@ss.hasPermi('wechat:identity:edit')")
     @Log(title = "微信说话人映射", businessType = BusinessType.UPDATE)
@@ -185,33 +180,24 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 执行分析：<b>只把未分析过的聊天记录</b>送给军师，结果落库。
+     * 分析入口占位。
      *
-     * <p>返回体里带 {@code remaining}，前端据此提示"还有 N 条未分析，可再次点击分析"。
+     * <p>调用 agent 的代码已移除，这里显式返回未启用，
+     * 而不是留一个会 500 或静默成功的空接口。接入其他方式后在此处替换实现。
      */
     @PreAuthorize("@ss.hasPermi('wechat:analysis:run')")
-    @Log(title = "微信聊天分析", businessType = BusinessType.OTHER)
     @PostMapping("/chat/analyze")
-    public AjaxResult analyze(@RequestBody AnalysisTriggerRequest request)
+    public AjaxResult analyze()
     {
-        if (request.getSessionId() == null)
+        if (!AGENT_INVOCATION_ENABLED)
         {
-            return AjaxResult.error("必须指定 sessionId");
+            return AjaxResult.error("分析功能未启用：调用 agent 的能力已从本模块移除");
         }
-        AnalysisTriggerResult result = archiveService.analyze(getUserId(), request.getSessionId(),
-                request.getGoal(), getUsername(),
-                (session, messages, goal) -> analysisService.analyzeArchived(session, messages, goal));
-
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("analysis", result.analysis());
-        data.put("analyzedCount", result.analyzedCount());
-        data.put("remaining", result.remaining());
-        data.put("hasMore", result.hasMore());
-        return AjaxResult.success(data);
+        return AjaxResult.error("分析功能未实现");
     }
 
     /**
-     * 历史分析记录（不含 prompt 快照，避免响应过大）。
+     * 已保存的分析记录（只读，不触发任何外部调用）。
      */
     @PreAuthorize("@ss.hasPermi('wechat:analysis:query')")
     @GetMapping("/analysis/list")
@@ -224,14 +210,13 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 分析详情（含 prompt 快照，用于复现）。
+     * 分析详情（含 prompt 快照）。
      */
     @PreAuthorize("@ss.hasPermi('wechat:analysis:query')")
     @GetMapping("/analysis/{analysisId}")
     public AjaxResult analysisDetail(@PathVariable Long analysisId)
     {
-        WeChatAnalysis analysis = archiveService.getAnalysis(getUserId(), analysisId);
-        return AjaxResult.success(analysis);
+        return AjaxResult.success(archiveService.getAnalysis(getUserId(), analysisId));
     }
 
     /**
@@ -262,6 +247,26 @@ public class WechatChatController extends BaseController
         item.put("lastMessage", s.lastMessage());
         item.put("lastSyncTime", s.lastSyncTime());
         item.put("archived", true);
+        return item;
+    }
+
+    private Map<String, Object> toDiscoveredMap(ChatSession c)
+    {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("sessionId", null);
+        item.put("chatUsername", c.username());
+        item.put("displayName", c.displayName());
+        item.put("group", c.group());
+        item.put("identityConfirmed", false);
+        item.put("selfLabels", List.of());
+        item.put("targetLabels", List.of());
+        item.put("msgCount", 0);
+        item.put("unanalyzedCount", 0);
+        item.put("analysisCount", 0);
+        item.put("lastTime", c.lastTime());
+        item.put("lastMessage", c.lastMessage());
+        item.put("lastSyncTime", null);
+        item.put("archived", false);
         return item;
     }
 }

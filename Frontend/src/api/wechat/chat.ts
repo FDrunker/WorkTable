@@ -1,7 +1,6 @@
 import request from '@/utils/request'
 import type {
   AjaxResult,
-  WechatAnalyzeResult,
   WechatAnalysis,
   WechatChatDetail,
   WechatSessionView,
@@ -69,19 +68,6 @@ export function confirmWechatIdentity(data: {
 }): Promise<AjaxResult<WechatSessionView>> {
   return request({
     url: '/wechat/identity/confirm',
-    method: 'post',
-    data
-  })
-}
-
-/**
- * 执行分析 —— 只把未分析过的聊天记录发送给 agent。
- *
- * 成功后这批消息会被标记为已分析，因此重复点击不会重复扣费。
- */
-export function analyzeWechatChat(data: { sessionId: number; goal?: string }): Promise<WechatAnalyzeResult> {
-  return request({
-    url: '/wechat/chat/analyze',
     method: 'post',
     data
   })

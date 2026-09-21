@@ -23,12 +23,10 @@ public interface WeChatAnalysisMapper
     int deleteByIds(@Param("analysisIds") Long[] analysisIds, @Param("userId") Long userId);
 
     /**
-     * 写入分析成功的结果。
-     */
-    int updateResult(WeChatAnalysis analysis);
-
-    /**
-     * 更新失败原因（分析过程出错时补写）。
+     * 更新失败原因。
+     *
+     * <p>当前模块内已无调用方（写分析结果的链路随 agent 调用一起移除），
+     * 保留是为了将来由其他方式写入分析记录时可以直接复用。
      */
     int updateFailure(WeChatAnalysis analysis);
 }

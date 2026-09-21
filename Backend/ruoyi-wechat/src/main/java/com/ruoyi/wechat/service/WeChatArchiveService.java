@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.alibaba.fastjson2.JSON;
 import com.ruoyi.wechat.clean.CleanResult;
 import com.ruoyi.wechat.clean.CleanedMessage;
 import com.ruoyi.wechat.clean.WechatMessageCleaner;
@@ -19,8 +18,6 @@ import com.ruoyi.wechat.datasource.ChatSession;
 import com.ruoyi.wechat.datasource.FetchQuery;
 import com.ruoyi.wechat.datasource.RawMessage;
 import com.ruoyi.wechat.datasource.WechatDataSource;
-import com.ruoyi.wechat.domain.AnalysisResponse;
-import com.ruoyi.wechat.domain.AnalysisTriggerResult;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.ChatMessageView;
 import com.ruoyi.wechat.domain.SessionView;
@@ -283,103 +280,6 @@ public class WeChatArchiveService
     }
 
     /**
-     * 执行分析：<b>只把未分析过的消息</b>送给军师，成功后标记已分析。
-     *
-     * <p>顺序很关键：先落一条"进行中"的分析记录拿到 ID，再把消息标记为已分析并关联该 ID。
-     * 如果先标记再分析，一旦分析失败，那批消息就永远不会被分析了 —— 这是不可接受的丢失。
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public AnalysisTriggerResult analyze(Long userId, Long sessionId, String goal, String operator,
-            AnalysisExecutor executor)
-    {
-        WeChatSession session = requireSession(userId, sessionId);
-        int maxMessages = properties.getClean().getMaxUnanalyzedPerAnalysis();
-
-        List<WeChatMessage> pending = messageMapper.selectUnanalyzed(sessionId, maxMessages);
-        if (pending.isEmpty())
-        {
-            throw new IllegalStateException("该会话没有未分析过的聊天记录，无需再次分析");
-        }
-
-        WeChatAnalysis record = new WeChatAnalysis();
-        record.setSessionId(sessionId);
-        record.setUserId(userId);
-        record.setChatName(session.getDisplayName());
-        record.setGoal(goal == null ? "" : goal);
-        record.setStartTime(pending.get(0).getMsgTime());
-        record.setEndTime(pending.get(pending.size() - 1).getMsgTime());
-        record.setMessageIdFrom(pending.get(0).getMessageId());
-        record.setMessageIdTo(pending.get(pending.size() - 1).getMessageId());
-        record.setMessageCount(pending.size());
-        record.setStatus("1");
-        record.setCrisis("0");
-        record.setCreateBy(operator);
-        analysisMapper.insertAnalysis(record);
-
-        List<Long> messageIds = new ArrayList<>(pending.size());
-        for (WeChatMessage m : pending)
-        {
-            messageIds.add(m.getMessageId());
-        }
-
-        try
-        {
-            AnalysisResponse response = executor.execute(session, pending, goal);
-
-            record.setIdentityDesc(response.identityDesc());
-            record.setRefsUsed(response.refsUsed() == null ? "" : String.join(",", response.refsUsed()));
-            record.setModel(response.model() == null ? "" : response.model());
-            record.setPromptTokens(response.promptTokens());
-            record.setCompletionTokens(response.completionTokens());
-            record.setDurationMs(response.durationMs());
-            record.setStatus("0");
-            record.setErrorMsg("");
-            if (response.isCrisis())
-            {
-                record.setCrisis("1");
-                record.setCrisisMessage(response.crisisMessage());
-                record.setResultJson(null);
-            }
-            else
-            {
-                record.setResultJson(JSON.toJSONString(response.result()));
-            }
-            updateAnalysisResult(record);
-
-            // 分析成功才标记已分析 —— 失败的消息下一轮仍会被重新取到
-            messageMapper.markAnalyzed(messageIds, record.getAnalysisId());
-        }
-        catch (RuntimeException e)
-        {
-            record.setStatus("1");
-            record.setErrorMsg(truncate(e.getMessage(), 1900));
-            record.setDurationMs(0L);
-            analysisMapper.updateFailure(record);
-            log.error("分析失败 sessionId={} analysisId={}: {}", sessionId, record.getAnalysisId(), e.getMessage());
-            throw e;
-        }
-        finally
-        {
-            sessionMapper.refreshCounters(sessionId);
-        }
-
-        int remaining = messageMapper.countUnanalyzed(sessionId);
-        return new AnalysisTriggerResult(record, pending.size(), remaining, remaining > 0);
-    }
-
-    /**
-     * 分析执行回调 —— 由 {@code AnalysisService} 注入。
-     *
-     * <p>用回调而不是让本服务直接依赖 AnalysisService，是为了避免两个服务相互依赖：
-     * AnalysisService 负责调 LLM，本服务负责持久化，职责边界清晰。
-     */
-    @FunctionalInterface
-    public interface AnalysisExecutor
-    {
-        AnalysisResponse execute(WeChatSession session, List<WeChatMessage> messages, String goal);
-    }
-
-    /**
      * 由标签集合构造映射；已确认的映射优先。
      */
     private ChatIdentity buildIdentity(WeChatSession session)
@@ -460,11 +360,6 @@ public class WeChatArchiveService
             throw new IllegalArgumentException("无权访问该会话");
         }
         return session;
-    }
-
-    private void updateAnalysisResult(WeChatAnalysis record)
-    {
-        analysisMapper.updateResult(record);
     }
 
     private SessionView toView(WeChatSession s)

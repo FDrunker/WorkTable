@@ -84,22 +84,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </update>
 
-    <update id="updateResult" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis">
-        update sys_wechat_analysis
-        set identity_desc = #{identityDesc},
-            refs_used = #{refsUsed},
-            result_json = #{resultJson},
-            crisis = #{crisis},
-            crisis_message = #{crisisMessage},
-            model = #{model},
-            prompt_tokens = #{promptTokens},
-            completion_tokens = #{completionTokens},
-            duration_ms = #{durationMs},
-            status = #{status},
-            error_msg = #{errorMsg}
-        where analysis_id = #{analysisId}
-    </update>
-
     <update id="updateFailure" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis">
         update sys_wechat_analysis
         set status = '1', error_msg = #{errorMsg}, duration_ms = #{durationMs}

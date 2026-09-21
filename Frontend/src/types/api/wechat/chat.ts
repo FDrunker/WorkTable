@@ -1,4 +1,4 @@
-import type { AjaxResult, BaseEntity } from '../common'
+import type { BaseEntity } from '../common'
 
 /** 数据源状态 */
 export interface WechatStatus {
@@ -116,17 +116,6 @@ export interface WechatAnalysis extends BaseEntity {
   /** 0 成功 1 失败 */
   status: string
   errorMsg?: string
-}
-
-/** 触发分析返回 */
-export interface WechatAnalyzeResult extends AjaxResult<unknown> {
-  analysis: WechatAnalysis
-  /** 本次消费掉的未分析消息条数 */
-  analyzedCount: number
-  /** 剩余未分析条数 */
-  remaining: number
-  /** 是否还有未分析消息 */
-  hasMore: boolean
 }
 
 /** 身份映射候选 */

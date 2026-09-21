@@ -73,22 +73,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         limit #{limit}
     </select>
 
-    <update id="markAnalyzed">
-        update sys_wechat_message
-        set analyzed = '1',
-            analyzed_time = ifnull(analyzed_time, sysdate()),
-            analysis_id = ifnull(analysis_id, #{analysisId})
-        where message_id in
-        <foreach item="id" collection="messageIds" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-    </update>
-
-    <select id="countUnanalyzed" resultType="int">
-        select count(*) from sys_wechat_message
-        where session_id = #{sessionId} and del_flag = '0' and analyzed = '0'
-    </select>
-
     <!--
       按原始标签整批回写角色。空标签需要单独判断：MySQL 中 null = '' 为 null 而非 true，
       而数据源在私聊里可能给出 null 标签，必须用 ifnull 兜住。
