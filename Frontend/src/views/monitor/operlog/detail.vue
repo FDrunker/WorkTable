@@ -33,9 +33,6 @@
           <el-col :span="12">
             <div class="detail-item"><span class="detail-label">操作人员</span><span class="detail-value">{{ form.operName }}</span></div>
           </el-col>
-          <el-col :span="12" v-if="form.deptName">
-            <div class="detail-item"><span class="detail-label">所属部门</span><span class="detail-value">{{ form.deptName }}</span></div>
-          </el-col>
         </el-row>
         <el-row class="detail-row">
           <el-col :span="24">

@@ -10,8 +10,6 @@ export interface OnlineQueryParams {
 export interface SysUserOnline {
   /** 会话编号 */
   tokenId?: string;
-  /** 部门名称 */
-  deptName?: string;
   /** 用户名称 */
   userName?: string;
   /** 登录IP */

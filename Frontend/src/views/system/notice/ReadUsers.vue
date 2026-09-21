@@ -26,7 +26,6 @@
       <el-table-column type="index" label="序号" width="55" align="center" />
       <el-table-column label="登录名称" prop="userName" align="center" :show-overflow-tooltip="true" />
       <el-table-column label="用户名称" prop="nickName" align="center" :show-overflow-tooltip="true" />
-      <el-table-column label="所属部门" prop="deptName" align="center" :show-overflow-tooltip="true" />
       <el-table-column label="手机号码" prop="phonenumber" align="center" width="120" />
       <el-table-column label="阅读时间" prop="readTime" align="center" width="160">
         <template #default="scope">

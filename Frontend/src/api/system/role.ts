@@ -1,5 +1,5 @@
 import request from '@/utils/request'
-import type { RoleQueryParams, AuthUserQueryParams, SysRole, SysUser, SysUserRole, AuthUserSelectParams, AjaxResult, RoleDeptTreeResult, TableDataInfo } from '@/types'
+import type { RoleQueryParams, AuthUserQueryParams, SysRole, SysUser, SysUserRole, AuthUserSelectParams, AjaxResult, TableDataInfo } from '@/types'
 
 // 查询角色列表
 export function listRole(query: RoleQueryParams): Promise<TableDataInfo<SysRole[]>> {
@@ -31,15 +31,6 @@ export function addRole(data: SysRole): Promise<AjaxResult> {
 export function updateRole(data: SysRole): Promise<AjaxResult> {
   return request({
     url: '/system/role',
-    method: 'put',
-    data: data
-  })
-}
-
-// 角色数据权限
-export function dataScope(data: SysRole): Promise<AjaxResult> {
-  return request({
-    url: '/system/role/dataScope',
     method: 'put',
     data: data
   })
@@ -108,13 +99,5 @@ export function authUserSelectAll(data: AuthUserSelectParams): Promise<AjaxResul
     url: '/system/role/authUser/selectAll',
     method: 'put',
     params: data
-  })
-}
-
-// 根据角色ID查询部门树结构
-export function deptTreeSelect(roleId: number): Promise<RoleDeptTreeResult> {
-  return request({
-    url: '/system/role/deptTree/' + roleId,
-    method: 'get'
   })
 }

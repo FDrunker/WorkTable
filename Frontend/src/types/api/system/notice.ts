@@ -43,7 +43,6 @@ export interface NoticeReadUser {
   userId?: number
   userName?: string
   nickName?: string
-  deptName?: string
   phonenumber?: string
   readTime?: string
 }

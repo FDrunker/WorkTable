@@ -1,4 +1,4 @@
-import type { PageDomain, BaseEntity, AjaxResult, TreeSelect } from "../common";
+import type { PageDomain, BaseEntity } from "../common";
 
 /** 角色分页查询参数 */
 export interface RoleQueryParams extends PageDomain {
@@ -48,24 +48,10 @@ export interface SysRole extends BaseEntity {
   roleKey?: string;
   /** 角色排序  */
   roleSort?: number;
-  /** 数据范围（1：所有数据权限；2：自定义数据权限；3：本部门数据权限；4：本部门及以下数据权限；5：仅本人数据权限） */
-  dataScope?: '1' | '2' | '3' | '4' | '5';
   /** 菜单树选择项是否关联显示 */
   menuCheckStrictly?: boolean;
-  /** 部门树选择项是否关联显示 */
-  deptCheckStrictly?: boolean;
   /** 角色权限 */
   menuIds?: number[];
-  /** 角色权限 */
-  deptIds?: number[];
   /** 状态（0正常 1停用） */
   status?: '0' | '1';
-}
-
-/** 角色部门树响应 */
-export interface RoleDeptTreeResult extends AjaxResult {
-  /** 选中部门ID */
-  checkedKeys: number[]
-  /** 部门树列表 */
-  depts: TreeSelect[]
 }

@@ -35,8 +35,6 @@ export interface SysOperLog extends BaseEntity {
   operatorType?: string;
   /** 操作人员 */
   operName?: string;
-  /** 部门名称 */
-  deptName?: string;
   /** 请求地址 */
   operUrl?: string;
   /** 操作地址 */

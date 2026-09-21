@@ -10,7 +10,7 @@ import java.util.List;
  * <pre>
  *   List<ExcelSheet<?>> sheets = new ArrayList<>();
  *   sheets.add(new ExcelSheet<>("参数数据", configList, Config.class, "参数信息"));
- *   sheets.add(new ExcelSheet<>("岗位数据", postList, Post.class, "岗位信息"));
+ *   sheets.add(new ExcelSheet<>("用户数据", userList, User.class, "用户信息"));
  *   return ExcelUtil.exportMultiSheet(sheets);
  * </pre>
  * 

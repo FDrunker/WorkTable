@@ -10,7 +10,7 @@ WorkTable/
 │   ├── ruoyi-admin/             # 启动模块（RuoYiApplication、Controller、配置、Swagger）
 │   ├── ruoyi-common/            # 通用工具、注解、常量、异常、基础实体
 │   ├── ruoyi-framework/         # 框架核心：安全、JWT、数据源、拦截器、AOP
-│   ├── ruoyi-system/            # 系统业务模块：用户 / 角色 / 菜单 / 部门 / 字典
+│   ├── ruoyi-system/            # 系统业务模块：用户 / 角色 / 菜单 / 字典 / 公告
 │   ├── ruoyi-quartz/            # 定时任务
 │   ├── ruoyi-generator/         # 代码生成器（Velocity 模板）
 │   ├── sql/                     # 数据库脚本：ry_*.sql、quartz.sql
@@ -74,6 +74,16 @@ npm run build:prod   # 生产构建
 ```
 
 开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8080`（见 `vite.config.ts`）。
+
+## 模块裁剪记录
+
+本项目已在若依脚手架基础上裁掉 **部门** 与 **岗位** 两个模块，代码与初始化脚本中不再包含「部门」「岗位」概念：
+
+- **已移除后端文件**：`SysDept`/`SysDeptController`/`ISysDeptService`/`SysDeptServiceImpl`/`SysDeptMapper`、`SysPost`/`SysPostController`/`ISysPostService`/`SysPostServiceImpl`/`SysPostMapper`、`SysUserPost`/`SysRoleDept` 及其 Mapper 与对应 XML。
+- **已移除数据权限**：`@DataScope` 注解、`DataScopeAspect` 切面、`checkUserDataScope`/`checkRoleDataScope`/`authDataScope`；角色不再有「数据权限」入口，用户与角色列表不再按机构过滤。
+- **已移除关联字段**：`sys_user.dept_id`、`LoginUser.deptId`、`BaseController.getDeptId()`、`SecurityUtils.getDeptId()`、`SysUser.postIds`/`dept`、`SysRole.dataScope`/`deptIds`/`deptCheckStrictly`、`SysOperLog.deptName`、在线用户与公告已读列表的「所属部门」列。
+- **已移除前端**：`src/views/system/dept`、`src/views/system/post`、`src/api/system/dept.ts`、`src/api/system/post.ts`、`src/types/api/system/dept.ts`、`src/types/api/system/post.ts`，以及用户管理、角色管理、操作日志、在线用户、公告已读页面中的部门/岗位表单项与列。
+- **SQL**：`Backend/sql/ry_20260417.sql` 已删除 `sys_dept`、`sys_post`、`sys_role_dept`、`sys_user_post` 建表与初始化数据，删除 `sys_user.dept_id`、`sys_oper_log.dept_name`、`sys_role.data_scope`、`sys_role.dept_check_strictly` 列，并清理 `sys_menu` / `sys_role_menu` 中部门与岗位相关菜单与按钮权限（菜单 103、104 及 1016–1024）。
 
 ## 配置说明
 
