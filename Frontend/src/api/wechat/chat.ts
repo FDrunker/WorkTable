@@ -60,6 +60,22 @@ export function importWechatText(data: WechatTextImportRequest): Promise<AjaxRes
   })
 }
 
+/**
+ * 修改会话名称。
+ *
+ * 只改展示名，会话标识（chatUsername）不动：归档消息的归属由它决定。
+ */
+export function renameWechatSession(data: {
+  sessionId: number
+  displayName: string
+}): Promise<AjaxResult<WechatSessionView>> {
+  return request({
+    url: '/wechat/session/rename',
+    method: 'post',
+    data
+  })
+}
+
 /** 手动同步聊天记录（不分析） */
 export function syncWechatChat(params: {
   sessionId?: number | null

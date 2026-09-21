@@ -25,6 +25,7 @@ import com.ruoyi.wechat.datasource.ChatSession;
 import com.ruoyi.wechat.datasource.SourceStatus;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.IdentityConfirmRequest;
+import com.ruoyi.wechat.domain.SessionRenameRequest;
 import com.ruoyi.wechat.domain.SessionView;
 import com.ruoyi.wechat.domain.TextImportRequest;
 import com.ruoyi.wechat.domain.WeChatAnalysis;
@@ -189,6 +190,23 @@ public class WechatChatController extends BaseController
         data.put("session", detail.session());
         data.put("msgCount", detail.total());
         return AjaxResult.success(data);
+    }
+
+    /**
+     * 修改会话名称。
+     *
+     * <p>只改展示名，不改会话标识：归档消息的归属由标识决定。
+     * 权限沿用「确认映射」（{@code wechat:identity:edit}）—— 两者都是编辑会话自身的元信息，
+     * 与其新增一个还要重跑菜单 SQL 的权限点，不如合并。
+     */
+    @PreAuthorize("@ss.hasPermi('wechat:identity:edit')")
+    @Log(title = "微信会话名称", businessType = BusinessType.UPDATE)
+    @PostMapping("/session/rename")
+    public AjaxResult renameSession(@RequestBody SessionRenameRequest request)
+    {
+        SessionView view = archiveService.renameSession(getUserId(), request.getSessionId(),
+                request.getDisplayName(), getUsername());
+        return AjaxResult.success(view);
     }
 
     /**

@@ -53,6 +53,9 @@ public class WeChatArchiveService
 
     private static final String DEL_FLAG_NORMAL = "0";
 
+    /** 会话展示名长度上限（归档表该列 128，留足余量） */
+    private static final int NAME_MAX_LENGTH = 60;
+
     private final WechatDataSource dataSource;
 
     private final WechatMessageCleaner cleaner;
@@ -214,6 +217,40 @@ public class WeChatArchiveService
                 session.getChatUsername(), raw.size(), inserted, cleaned.droppedCount(),
                 cleaned.collapsedCount());
         return inserted;
+    }
+
+    /**
+     * 修改会话展示名。
+     *
+     * <p>只改 {@code display_name}，会话标识保持不变 —— 标识决定归档消息归属，
+     * 跟着改名会让历史记录看起来像是另一个会话的。
+     * 另外，导入时若会话已存在（同名文本再次粘贴）不会覆盖展示名，
+     * 所以这里改的名字不会被后续导入冲掉。
+     *
+     * @param displayName 新名称，首尾空白会被裁掉
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SessionView renameSession(Long userId, Long sessionId, String displayName, String operator)
+    {
+        requireSession(userId, sessionId);
+
+        String name = displayName == null ? "" : displayName.trim();
+        if (name.isEmpty())
+        {
+            throw new IllegalArgumentException("会话名称不能为空");
+        }
+        if (name.length() > NAME_MAX_LENGTH)
+        {
+            throw new IllegalArgumentException("会话名称过长：上限 " + NAME_MAX_LENGTH + " 个字符");
+        }
+
+        WeChatSession update = new WeChatSession();
+        update.setSessionId(sessionId);
+        update.setDisplayName(name);
+        update.setUpdateBy(operator);
+        sessionMapper.updateSession(update);
+
+        return toView(sessionMapper.selectById(sessionId));
     }
 
     /**

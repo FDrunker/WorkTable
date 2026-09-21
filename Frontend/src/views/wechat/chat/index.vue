@@ -70,7 +70,26 @@
       <template v-if="activeSession">
         <header class="chat-header">
           <div class="chat-title">
-            <span class="chat-name">{{ activeSession.displayName }}</span>
+            <!-- 会话名可就地改：只改展示名，不动会话标识，历史消息仍属于同一个会话 -->
+            <el-input
+              v-if="nameEditing"
+              ref="nameInputRef"
+              v-model="nameDraft"
+              size="small"
+              maxlength="60"
+              class="chat-name-input"
+              @keyup.enter="saveSessionName"
+              @keyup.esc="cancelEditName"
+              @blur="saveSessionName"
+            />
+            <template v-else>
+              <span class="chat-name">{{ activeSession.displayName }}</span>
+              <el-tooltip v-if="activeSession.sessionId" content="修改会话名称" placement="bottom">
+                <el-button link size="small" class="rename-btn" @click="startEditName">
+                  <el-icon><EditPen /></el-icon>
+                </el-button>
+              </el-tooltip>
+            </template>
             <el-tag v-if="activeSession.group" size="small" type="info" effect="plain">群聊</el-tag>
             <el-tag v-if="!activeSession.sessionId" size="small" type="warning" effect="plain">未归档</el-tag>
           </div>
@@ -381,6 +400,7 @@ import {
   ArrowDown,
   ArrowRight,
   DocumentAdd,
+  EditPen,
   MagicStick,
   Refresh,
   Search,
@@ -393,6 +413,7 @@ import {
   listWechatAnalysis,
   listWechatSessions,
   openWechatChat,
+  renameWechatSession,
   syncWechatChat
 } from '@/api/wechat/chat'
 import type {
@@ -415,6 +436,12 @@ const identityDialog = ref(false)
 /** 导入文本对话框 */
 const importDialog = ref(false)
 const importing = ref(false)
+
+/** 会话改名的就地编辑状态 */
+const nameEditing = ref(false)
+const nameSaving = ref(false)
+const nameDraft = ref('')
+const nameInputRef = ref()
 
 const sessions = ref<WechatSessionView[]>([])
 const activeSession = ref<WechatSessionView | null>(null)
@@ -624,6 +651,65 @@ async function confirmImport() {
     ElMessage.error(e?.message || '文本解析失败')
   } finally {
     importing.value = false
+  }
+}
+
+/** 开始修改会话名：用当前名字预填输入框并聚焦 */
+function startEditName() {
+  const item = activeSession.value
+  if (!item?.sessionId) {
+    ElMessage.warning('该会话还没有归档记录，无法改名')
+    return
+  }
+  nameDraft.value = item.displayName
+  nameEditing.value = true
+  nextTick(() => nameInputRef.value?.focus())
+}
+
+/** 放弃本次修改 */
+function cancelEditName() {
+  nameEditing.value = false
+}
+
+/**
+ * 保存会话名。
+ *
+ * 回车与失焦都会走到这里，因此进入时必须先判断是否仍在编辑态 ——
+ * 否则回车触发的那次保存会被紧随其后的 blur 再执行一遍。
+ */
+async function saveSessionName() {
+  if (!nameEditing.value || nameSaving.value) {
+    return
+  }
+  const item = activeSession.value
+  if (!item?.sessionId) {
+    nameEditing.value = false
+    return
+  }
+  const name = nameDraft.value.trim()
+  if (!name) {
+    nameEditing.value = false
+    ElMessage.warning('会话名称不能为空，已保留原名')
+    return
+  }
+  if (name === item.displayName) {
+    nameEditing.value = false
+    return
+  }
+
+  nameSaving.value = true
+  try {
+    const res = await renameWechatSession({ sessionId: item.sessionId, displayName: name })
+    if (res.data) {
+      activeSession.value = res.data
+      mergeSessionIntoList(res.data)
+    }
+    nameEditing.value = false
+    ElMessage.success('会话名称已更新')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '会话名称修改失败')
+  } finally {
+    nameSaving.value = false
   }
 }
 
@@ -1012,6 +1098,20 @@ $wechat-border: #d9d9d9;
   font-size: 16px;
   font-weight: 500;
   color: #1a1a1a;
+}
+
+/* 就地改名的输入框：宽度固定，避免长名字把右侧操作按钮挤走 */
+.chat-name-input {
+  width: 240px;
+}
+
+.rename-btn {
+  padding: 0 4px;
+  color: #9a9a9a;
+
+  &:hover {
+    color: #409eff;
+  }
 }
 
 .chat-actions {
