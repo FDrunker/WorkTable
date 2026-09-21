@@ -58,12 +58,20 @@ public class WeChatSession extends BaseEntity
     /** 删除标志（0存在 2删除） */
     private String delFlag;
 
-    public boolean isGroupChat()
+    public boolean groupChat()
     {
         return "1".equals(isGroup);
     }
 
-    public boolean isIdentityConfirmed()
+    /**
+     * 说话人映射是否已确认。
+     *
+     * <p>刻意不叫 {@code isIdentityConfirmed()}：那会与
+     * {@link #getIdentityConfirmed()} 构成本文属性 {@code identityConfirmed} 的
+     * 重载 getter，违反 JavaBeans 规范，MyBatis 反射取值时会直接抛
+     * {@code ReflectionException: Illegal overloaded getter method}。
+     */
+    public boolean identityConfirmed()
     {
         return "1".equals(identityConfirmed);
     }

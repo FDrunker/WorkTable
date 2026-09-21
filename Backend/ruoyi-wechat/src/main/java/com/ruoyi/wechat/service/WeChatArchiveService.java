@@ -167,7 +167,7 @@ public class WeChatArchiveService
         // 但消息照常入库 —— 否则用户连记录都看不到，更没法确认映射。
         ChatIdentity identity = buildIdentity(session);
 
-        CleanResult cleaned = cleaner.clean(raw, identity, session.isGroupChat());
+        CleanResult cleaned = cleaner.clean(raw, identity, session.groupChat());
 
         List<WeChatMessage> rows = new ArrayList<>(cleaned.messages().size());
         for (CleanedMessage m : cleaned.messages())
@@ -194,7 +194,7 @@ public class WeChatArchiveService
         }
 
         // 首次同步时把自动推断出的映射固化下来，后续确认可以直接覆盖
-        if (!session.isIdentityConfirmed() && identity.autoDetected())
+        if (!session.identityConfirmed() && identity.autoDetected())
         {
             updateIdentity(session, identity.selfUsername(), identity.selfLabels(),
                     identity.targetLabels(), false, operator);
@@ -284,7 +284,7 @@ public class WeChatArchiveService
      */
     private ChatIdentity buildIdentity(WeChatSession session)
     {
-        if (session.isIdentityConfirmed())
+        if (session.identityConfirmed())
         {
             return ChatIdentity.confirmed(session.getSelfUsername(),
                     WeChatSession.splitLabels(session.getSelfLabels()),
@@ -380,8 +380,8 @@ public class WeChatArchiveService
             }
         }
 
-        return new SessionView(s.getSessionId(), s.getChatUsername(), s.getDisplayName(), s.isGroupChat(),
-                s.isIdentityConfirmed(), WeChatSession.splitLabels(s.getSelfLabels()),
+        return new SessionView(s.getSessionId(), s.getChatUsername(), s.getDisplayName(), s.groupChat(),
+                s.identityConfirmed(), WeChatSession.splitLabels(s.getSelfLabels()),
                 WeChatSession.splitLabels(s.getTargetLabels()),
                 s.getMsgCount() == null ? 0 : s.getMsgCount(),
                 s.getUnanalyzedCount() == null ? 0 : s.getUnanalyzedCount(),
