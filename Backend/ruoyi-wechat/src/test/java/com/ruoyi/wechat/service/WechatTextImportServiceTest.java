@@ -2,10 +2,10 @@ package com.ruoyi.wechat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.junit.jupiter.api.DisplayName;
@@ -17,13 +17,11 @@ import com.ruoyi.wechat.datasource.MockWechatDataSource;
 import com.ruoyi.wechat.datasource.WechatDataSourceException;
 import com.ruoyi.wechat.datasource.text.TextWechatDataSource;
 import com.ruoyi.wechat.domain.ChatDetail;
+import com.ruoyi.wechat.domain.SessionView;
+import com.ruoyi.wechat.domain.TextImportPreview;
 
 /**
- * {@link WechatTextImportService} 单元测试。
- *
- * <p>它只有两个职责：把文本交给文本数据源解析、再把解析结果交给归档服务。
- * 这里用一个记录参数的同门类替身来验证第二条 —— 归档本身依赖数据库，
- * 属于集成测试的范围，不在单测里假装覆盖。
+ * {@link WechatTextImportService} 的预览与确认流程测试。
  */
 class WechatTextImportServiceTest
 {
@@ -34,28 +32,43 @@ class WechatTextImportServiceTest
 
             我
             2026-04-01 19:03
-            [语音]
+            在的
             """;
 
     private final RecordingArchiveService archiveService = new RecordingArchiveService();
 
     @Test
-    @DisplayName("导入：解析文本后按派生出的会话标识归档，并把归档结果原样返回给前端")
-    void shouldParseThenArchive()
+    @DisplayName("预览：只解析昵称候选，不写数据库")
+    void shouldPreviewWithoutArchiving()
     {
         TextWechatDataSource source = new TextWechatDataSource();
         WechatTextImportService service = new WechatTextImportService(provider(source),
                 archiveService, new WechatStatusService(new MockWechatDataSource()));
 
-        ChatDetail detail = service.importText(1L, "小美", TEXT, "admin");
+        TextImportPreview preview = service.previewText(1L, TEXT);
 
-        assertNotNull(detail);
-        assertTrue(archiveService.called, "必须把解析结果交给归档服务");
-        assertTrue(archiveService.chatUsername.startsWith(TextWechatDataSource.USERNAME_PREFIX));
-        assertEquals("小美", archiveService.displayName);
-        assertEquals(1L, archiveService.userId);
-        assertEquals("admin", archiveService.operator);
-        assertTrue(archiveService.sync, "导入必须触发一次落库同步");
+        assertEquals(2, preview.senders().size());
+        assertFalse(archiveService.called, "预览阶段不能写归档");
+    }
+
+    @Test
+    @DisplayName("确认：按对方昵称归档，回写角色后再返回最终聊天记录")
+    void shouldCommitAndConfirmIdentity()
+    {
+        TextWechatDataSource source = new TextWechatDataSource();
+        WechatTextImportService service = new WechatTextImportService(provider(source),
+                archiveService, new WechatStatusService(new MockWechatDataSource()));
+        TextImportPreview preview = service.previewText(1L, TEXT);
+
+        ChatDetail detail = service.commitText(1L, preview.importId(), "我", "admin");
+
+        assertEquals(2, archiveService.openCount);
+        assertEquals("小美", archiveService.firstDisplayName);
+        assertTrue(archiveService.firstSync);
+        assertEquals(9L, archiveService.confirmedSessionId);
+        assertEquals(List.of("我"), archiveService.confirmedSelfLabels);
+        assertEquals(List.of("小美"), archiveService.confirmedTargetLabels);
+        assertEquals(9L, detail.session().sessionId());
     }
 
     @Test
@@ -65,14 +78,18 @@ class WechatTextImportServiceTest
         WechatTextImportService service = new WechatTextImportService(provider(null),
                 archiveService, new WechatStatusService(new MockWechatDataSource()));
 
-        WechatDataSourceException e = assertThrows(WechatDataSourceException.class,
-                () -> service.importText(1L, "小美", TEXT, "admin"));
+        WechatDataSourceException previewError = assertThrows(WechatDataSourceException.class,
+                () -> service.previewText(1L, TEXT));
+        WechatDataSourceException commitError = assertThrows(WechatDataSourceException.class,
+                () -> service.commitText(1L, "text:preview-x", "我", "admin"));
 
-        assertTrue(e.getMessage().contains("mock"), "错误里要说明当前数据源是什么：" + e.getMessage());
-        assertTrue(e.getSuggestion().contains("wechat.datasource"));
-        assertFalse(archiveService.called, "数据源不对时不应写库");    }
+        assertTrue(previewError.getMessage().contains("mock"));
+        assertTrue(previewError.getSuggestion().contains("wechat.datasource"));
+        assertTrue(commitError.getMessage().contains("mock"));
+        assertFalse(archiveService.called, "数据源不对时不应写库");
+    }
 
-    /** 构造一个只实现 getObject 的 ObjectProvider；getIfAvailable 的默认实现会据此返回 null */
+    /** 构造一个只实现 getObject 的 ObjectProvider；getIfAvailable 会据此返回 null */
     private static <T> ObjectProvider<T> provider(T value)
     {
         return new ObjectProvider<>()
@@ -89,24 +106,27 @@ class WechatTextImportServiceTest
         };
     }
 
-    /** 记录 openChat 入参的替身，避免单测依赖数据库 */
+    /**
+     * 记录归档与映射入参的替身。
+     */
     private static class RecordingArchiveService extends WeChatArchiveService
     {
         private boolean called;
 
-        private Long userId;
+        private int openCount;
 
-        private String chatUsername;
+        private String firstDisplayName;
 
-        private String displayName;
+        private boolean firstSync;
 
-        private boolean sync;
+        private Long confirmedSessionId;
 
-        private String operator;
+        private List<String> confirmedSelfLabels;
+
+        private List<String> confirmedTargetLabels;
 
         RecordingArchiveService()
         {
-            // 只覆写 openChat，父类依赖全为 null 也不会被碰到
             super(null, null, null, null, null, null);
         }
 
@@ -114,13 +134,33 @@ class WechatTextImportServiceTest
         public ChatDetail openChat(Long userId, Long sessionId, String chatUsername, String displayName,
                 boolean group, int offset, int limit, boolean sync, String operator)
         {
-            this.called = true;
-            this.userId = userId;
-            this.chatUsername = chatUsername;
-            this.displayName = displayName;
-            this.sync = sync;
-            this.operator = operator;
-            return new ChatDetail(null, List.of(), 0, offset, limit);
+            called = true;
+            openCount++;
+            if (openCount == 1)
+            {
+                firstDisplayName = displayName;
+                firstSync = sync;
+            }
+            return new ChatDetail(sessionView(), List.of(), 0, offset, limit);
+        }
+
+        @Override
+        public SessionView confirmIdentity(Long userId, Long sessionId, String selfUsername,
+                List<String> selfLabels, List<String> targetLabels, String operator)
+        {
+            called = true;
+            confirmedSessionId = sessionId;
+            confirmedSelfLabels = selfLabels;
+            confirmedTargetLabels = targetLabels;
+            return sessionView();
+        }
+
+        private static SessionView sessionView()
+        {
+            return new SessionView(9L, "text:target", "小美", false, true,
+                    List.of("我"), List.of("小美"), 2, 0, 0,
+                    "2026-04-01 19:03", "在的", null,
+                    new BigDecimal("50.00"), null, null, null, null);
         }
     }
 }

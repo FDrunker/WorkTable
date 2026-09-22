@@ -92,21 +92,23 @@ npm run build:prod   # 生产构建
 - **已移除前端**：`src/views/system/dept`、`src/views/system/post`、`src/api/system/dept.ts`、`src/api/system/post.ts`、`src/types/api/system/dept.ts`、`src/types/api/system/post.ts`，以及用户管理、角色管理、操作日志、在线用户、公告已读页面中的部门/岗位表单项与列。
 - **SQL**：`Backend/sql/ry_20260417.sql` 已删除 `sys_dept`、`sys_post`、`sys_role_dept`、`sys_user_post` 建表与初始化数据，删除 `sys_user.dept_id`、`sys_oper_log.dept_name`、`sys_role.data_scope`、`sys_role.dept_check_strictly` 列，并清理 `sys_menu` / `sys_role_menu` 中部门与岗位相关菜单与按钮权限（菜单 103、104 及 1016–1024）。
 
-## 微信聊天分析（ruoyi-wechat）
+## 微信聊天记录与关系面板（ruoyi-wechat）
 
 聊天分析的**数据来源是用户粘贴的聊天记录文本**，不读取本地微信数据库，也不依赖任何外部命令：
 
-- **入口**：聊天分析页（`Frontend/src/views/wechat/chat/index.vue`）左下角「导入文本」。
+- **入口**：聊天页（`Frontend/src/views/wechat/chat/index.vue`）左下角「导入文本」。
 - **格式**：每 3 行一条消息 —— 昵称 / 时间 / 消息内容；消息内容可跨多行，组与组之间可空行。
   时间支持 `2026-04-01 19:02`、`2026/4/1 19:02`、`2026年4月1日 19:02`、`4月1日 19:02`（省略年份按当年计算），
   兼容 `下午7:02` 这类时段写法，统一归一化为 `yyyy-MM-dd HH:mm[:ss]`。
 - **语音与动画表情**：`[语音]`、`[动画表情]` 会照常归档并显示在聊天记录界面，但**不参与分析**
   （对应 `CleanedMessage.Kind.VOICE` / `STICKER` 的 `displayOnly()`）。静态 `[表情]` 仍按降噪丢弃。
-- **幂等**：会话标识由会话名派生，重复粘贴同一段对话是追加去重，不会重复建会话。
-- **会话名可改**：聊天界面标题上的铅笔按钮可就地改名（`POST /wechat/session/rename`，沿用 `wechat:identity:edit` 权限）。
-  只改展示名，会话标识不变 —— 所以改过名的会话在后续导入里依然是同一个会话，不会被拆成两个，也不会被重新导入冲掉。
-- **关系面板**：聊天区顶部展示当前好感度、认识天数、我的发挥和下一步建议入口。
-  认识日期由用户选择，通过 `POST /wechat/session/acquaintance-date` 保存；认识当天按第 1 天计算。
+- **两步导入**：`POST /wechat/text/preview` 先解析并返回昵称候选；用户选择哪个昵称是自己后，
+  `POST /wechat/text/commit` 才正式归档。消息按文本时间排序，不受粘贴先后影响。
+- **会话归属**：除自己外的昵称共同决定会话名称和稳定标识，同一对象的后续导入会追加到同一会话。
+- **关系面板**：聊天区顶部展示当前好感度、认识天数、我的发挥和建议入口。
+  未填写时显示「选择认识日期」，点击后弹窗选择；认识当天按第 1 天计算。
+- **删除会话**：左侧会话列表可删除当前用户的会话，并同步逻辑删除消息与历史分析记录。
+- **分析面板**：当前聊天页只保留消息与关系洞察，不再展示右侧军师分析面板。
 - **消息洞察协议**：会话响应预留 `affinityScore`、`myPerformanceScore`、`nextStepSuggestion`；
   消息响应预留 `emotionTag` / `emotionPercent`、`intentTag` / `intentPercent`、
   `replyRating` / `replyScore`。当前没有计算数据时前端显示“待分析 / 待评估”，后续模型链路可直接回填这些字段。
@@ -127,6 +129,8 @@ npm run build:prod   # 生产构建
 - 前端环境变量：`Frontend/.env.development`、`.env.production`、`.env.staging`
 - 已执行过旧版 `wechat.sql` 的数据库需要执行一次 `Backend/sql/wechat-insights.sql`，
   增加好感度、认识日期及消息洞察字段；全新安装直接执行最新的 `Backend/sql/wechat.sql`。
+- 已执行过旧版 `wechat.sql` 的数据库还需执行 `Backend/sql/wechat-session-delete.sql`，
+  增加「删除会话」按钮权限。
 
 ## 版本管理
 

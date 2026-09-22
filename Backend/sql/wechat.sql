@@ -120,6 +120,7 @@ insert into sys_menu values('2013', '执行分析', '2001', '4', '', '', '', '',
 insert into sys_menu values('2014', '分析查询', '2001', '5', '', '', '', '', 1, 0, 'F', '0', '0', 'wechat:analysis:query',  '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2015', '分析删除', '2001', '6', '', '', '', '', 1, 0, 'F', '0', '0', 'wechat:analysis:remove', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('2016', '确认映射', '2001', '7', '', '', '', '', 1, 0, 'F', '0', '0', 'wechat:identity:edit',   '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('2017', '删除会话', '2001', '8', '', '', '', '', 1, 0, 'F', '0', '0', 'wechat:session:remove', '#', 'admin', sysdate(), '', null, '');
 
 -- 分配给超级管理员角色（role_id = 1）
 insert into sys_role_menu values('1', '2000');
@@ -131,3 +132,4 @@ insert into sys_role_menu values('1', '2013');
 insert into sys_role_menu values('1', '2014');
 insert into sys_role_menu values('1', '2015');
 insert into sys_role_menu values('1', '2016');
+insert into sys_role_menu values('1', '2017');

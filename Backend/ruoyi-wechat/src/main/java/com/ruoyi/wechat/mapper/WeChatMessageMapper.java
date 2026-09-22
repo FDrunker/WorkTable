@@ -51,4 +51,9 @@ public interface WeChatMessageMapper
      */
     int updateSenderRoleByLabel(@Param("sessionId") Long sessionId, @Param("rawLabel") String rawLabel,
             @Param("role") String role);
+
+    /**
+     * 删除会话时同步逻辑删除其消息。
+     */
+    int deleteBySessionId(@Param("sessionId") Long sessionId);
 }

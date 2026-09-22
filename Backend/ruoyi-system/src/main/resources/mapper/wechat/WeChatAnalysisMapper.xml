@@ -84,6 +84,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </update>
 
+    <update id="deleteBySessionId">
+        update sys_wechat_analysis set del_flag = '2'
+        where session_id = #{sessionId} and del_flag = '0'
+    </update>
+
     <update id="updateFailure" parameterType="com.ruoyi.wechat.domain.WeChatAnalysis">
         update sys_wechat_analysis
         set status = '1', error_msg = #{errorMsg}, duration_ms = #{durationMs}

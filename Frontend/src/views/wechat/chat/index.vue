@@ -26,10 +26,19 @@
             <div class="session-top">
               <span class="session-name">{{ item.displayName }}</span>
               <span class="session-time">{{ shortTime(item.lastTime) }}</span>
+              <el-button
+                v-if="item.sessionId"
+                link
+                size="small"
+                class="session-delete"
+                title="删除会话"
+                @click.stop="removeSession(item)"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
             </div>
             <div class="session-bottom">
               <span class="session-preview">{{ item.lastMessage || '暂无归档消息' }}</span>
-              <span v-if="item.unanalyzedCount > 0" class="badge">{{ item.unanalyzedCount }}</span>
             </div>
           </div>
         </div>
@@ -70,26 +79,7 @@
       <template v-if="activeSession">
         <header class="chat-header">
           <div class="chat-title">
-            <!-- 会话名可就地改：只改展示名，不动会话标识，历史消息仍属于同一个会话 -->
-            <el-input
-              v-if="nameEditing"
-              ref="nameInputRef"
-              v-model="nameDraft"
-              size="small"
-              maxlength="60"
-              class="chat-name-input"
-              @keyup.enter="saveSessionName"
-              @keyup.esc="cancelEditName"
-              @blur="saveSessionName"
-            />
-            <template v-else>
-              <span class="chat-name">{{ activeSession.displayName }}</span>
-              <el-tooltip v-if="activeSession.sessionId" content="修改会话名称" placement="bottom">
-                <el-button link size="small" class="rename-btn" @click="startEditName">
-                  <el-icon><EditPen /></el-icon>
-                </el-button>
-              </el-tooltip>
-            </template>
+            <span class="chat-name">{{ activeSession.displayName }}</span>
             <el-tag v-if="activeSession.group" size="small" type="info" effect="plain">群聊</el-tag>
             <el-tag v-if="!activeSession.sessionId" size="small" type="warning" effect="plain">未归档</el-tag>
           </div>
@@ -102,21 +92,6 @@
               <el-icon><Refresh /></el-icon>
               <span>同步记录</span>
             </el-button>
-            <el-tooltip :content="agentEnabled ? '分析未分析记录' : '分析功能未启用'" placement="bottom">
-              <span class="analyze-wrap">
-                <el-button
-                  type="primary"
-                  size="small"
-                  class="analyze-btn"
-                  :disabled="!agentEnabled"
-                  @click="runAnalysis"
-                >
-                  <el-icon><MagicStick /></el-icon>
-                  <span>分析</span>
-                  <span v-if="unanalyzedCount > 0" class="btn-badge">{{ unanalyzedCount }}</span>
-                </el-button>
-              </span>
-            </el-tooltip>
           </div>
         </header>
 
@@ -136,22 +111,15 @@
 
           <div class="relationship-item acquaintance-item">
             <span class="relationship-label">认识</span>
-            <el-date-picker
-              v-model="acquaintanceDraft"
-              type="date"
-              value-format="YYYY-MM-DD"
-              format="YYYY-MM-DD"
-              placeholder="选择认识日期"
+            <el-button
+              link
               size="small"
-              clearable
-              :disabled="acquaintanceSaving"
-              :disabled-date="disableFutureDate"
-              class="acquaintance-picker"
-              @change="saveAcquaintanceDate"
-            />
-            <span class="acquaintance-days">
-              {{ activeSession.acquaintanceDays != null ? `第 ${activeSession.acquaintanceDays} 天` : '天数待填写' }}
-            </span>
+              class="acquaintance-link"
+              :loading="acquaintanceSaving"
+              @click="openAcquaintanceDialog"
+            >
+              {{ activeSession.acquaintanceDays != null ? `认识 ${activeSession.acquaintanceDays} 天` : '选择认识日期' }}
+            </el-button>
           </div>
 
           <div class="relationship-item performance-item">
@@ -160,28 +128,9 @@
           </div>
 
           <el-button type="primary" size="small" class="next-step-btn" @click="nextStepDialog = true">
-            下一步
+            建议
           </el-button>
         </div>
-
-        <!-- 说话人映射确认：军师 skill 要求映射不明时必须先问 -->
-        <el-alert
-          v-if="!activeSession.identityConfirmed"
-          class="identity-alert"
-          type="warning"
-          :closable="false"
-          show-icon
-        >
-          <template #title>
-            尚未确认「我」是哪个昵称
-            <el-button link type="primary" size="small" @click="identityDialog = true">立即确认</el-button>
-          </template>
-          <div class="identity-hint">
-            未确认时消息只能显示原始标签，军师也无法正确判断谁在主动。当前推断：我 =
-            {{ activeSession.selfLabels.length ? activeSession.selfLabels.join('、') : '未知' }}；对方 =
-            {{ activeSession.targetLabels.length ? activeSession.targetLabels.join('、') : '未知' }}
-          </div>
-        </el-alert>
 
         <div ref="messageListRef" class="message-list" v-loading="messageLoading">
           <template v-for="(msg, index) in messages" :key="msg.messageId">
@@ -232,8 +181,6 @@
                 </div>
                 <div class="msg-meta">
                   <span class="msg-time">{{ onlyTime(msg.time) }}</span>
-                  <span v-if="!msg.analyzed" class="msg-dirty">未分析</span>
-                  <span v-else class="msg-clean">已分析</span>
                 </div>
               </div>
 
@@ -250,154 +197,8 @@
       <el-empty v-else description="请从左侧选择一个会话" />
     </main>
 
-    <!-- ============ 右栏：分析结果 / 历史分析 ============ -->
-    <aside class="analysis-panel">
-      <div class="analysis-head">
-        <span class="panel-title">军师分析</span>
-        <el-button
-          v-if="activeSession && activeSession.sessionId"
-          link
-          size="small"
-          :loading="historyLoading"
-          @click="loadHistory"
-        >
-          <el-icon><Refresh /></el-icon>
-        </el-button>
-      </div>
-
-      <div class="analysis-goal">
-        <el-input
-          v-model="goal"
-          type="textarea"
-          :rows="2"
-          resize="none"
-          maxlength="500"
-          show-word-limit
-          placeholder="想解决什么？（可留空，例如：这句怎么回 / 对方还有没有兴趣）"
-        />
-        <div class="goal-actions">
-          <span class="goal-hint">
-            <template v-if="unanalyzedCount > 0">待分析 {{ unanalyzedCount }} 条</template>
-            <template v-else>没有未分析的记录</template>
-          </span>
-          <el-tooltip :content="agentEnabled ? '分析未分析的记录' : '分析功能未启用'" placement="top">
-            <span class="analyze-wrap">
-              <el-button
-                type="primary"
-                size="small"
-                class="analyze-btn"
-                :disabled="!agentEnabled"
-                @click="runAnalysis"
-              >
-                分析未分析记录
-              </el-button>
-            </span>
-          </el-tooltip>
-        </div>
-      </div>
-
-      <div class="analysis-body" v-loading="historyLoading">
-        <el-empty
-          v-if="!historyLoading && analysisList.length === 0"
-          description="还没有分析记录，点击上方按钮开始"
-          :image-size="70"
-        />
-
-        <div v-for="item in analysisList" :key="item.analysisId" class="analysis-card">
-          <div class="card-head" @click="toggleAnalysis(item.analysisId)">
-            <div class="card-head-left">
-              <el-tag v-if="item.crisis === '1'" type="danger" size="small" effect="dark">安全提示</el-tag>
-              <el-tag v-else-if="item.status === '1'" type="info" size="small">失败</el-tag>
-              <el-tag v-else type="success" size="small" effect="plain">已完成</el-tag>
-              <span class="card-count">{{ item.messageCount }} 条</span>
-            </div>
-            <div class="card-head-right">
-              <span class="card-time">{{ shortTime(item.createTime) }}</span>
-              <el-icon><ArrowDown v-if="expandedId === item.analysisId" /><ArrowRight v-else /></el-icon>
-            </div>
-          </div>
-
-          <div v-if="item.goal" class="card-goal">诉求：{{ item.goal }}</div>
-
-          <div v-if="expandedId === item.analysisId" class="card-detail">
-            <!-- 失败记录直接展示原因，不要给用户看空结构 -->
-            <el-alert v-if="item.status === '1'" type="error" :closable="false" :title="item.errorMsg || '分析失败'" />
-
-            <!-- 命中安全红线时展示固定指引，不套用恋爱话术 -->
-            <div v-else-if="item.crisis === '1'" class="crisis-box">{{ item.crisisMessage }}</div>
-
-            <template v-else-if="parseResult(item)">
-              <section v-if="parseResult(item)!.emotionLanding" class="sec">
-                <h4>情绪落地</h4>
-                <p>{{ parseResult(item)!.emotionLanding }}</p>
-              </section>
-
-              <section v-if="parseResult(item)!.facts" class="sec">
-                <h4>事实拆分</h4>
-                <div v-if="parseResult(item)!.facts!.knownFacts.length" class="fact-group">
-                  <span class="fact-title known">已知事实</span>
-                  <ul>
-                    <li v-for="(f, i) in parseResult(item)!.facts!.knownFacts" :key="'k' + i">{{ f }}</li>
-                  </ul>
-                </div>
-                <div v-if="parseResult(item)!.facts!.inferences.length" class="fact-group">
-                  <span class="fact-title infer">推测</span>
-                  <ul>
-                    <li v-for="(f, i) in parseResult(item)!.facts!.inferences" :key="'i' + i">{{ f }}</li>
-                  </ul>
-                </div>
-                <div v-if="parseResult(item)!.facts!.keyUnknowns.length" class="fact-group">
-                  <span class="fact-title unknown">关键未知</span>
-                  <ul>
-                    <li v-for="(f, i) in parseResult(item)!.facts!.keyUnknowns" :key="'u' + i">{{ f }}</li>
-                  </ul>
-                </div>
-              </section>
-
-              <section v-if="parseResult(item)!.interest" class="sec">
-                <h4>利益判断</h4>
-                <p>{{ parseResult(item)!.interest!.evaluation }}</p>
-              </section>
-
-              <section v-if="parseResult(item)!.advice" class="sec">
-                <h4>明确建议</h4>
-                <p class="primary-advice">{{ parseResult(item)!.advice!.primary }}</p>
-                <ul v-if="parseResult(item)!.advice!.reasons.length" class="reason-list">
-                  <li v-for="(r, i) in parseResult(item)!.advice!.reasons" :key="'r' + i">{{ r }}</li>
-                </ul>
-                <div v-if="parseResult(item)!.advice!.steadyVariant" class="variant">
-                  <span class="variant-tag">稳健版</span>{{ parseResult(item)!.advice!.steadyVariant }}
-                </div>
-                <div v-if="parseResult(item)!.advice!.flirtyVariant" class="variant">
-                  <span class="variant-tag">会撩版</span>{{ parseResult(item)!.advice!.flirtyVariant }}
-                </div>
-                <div v-if="parseResult(item)!.advice!.assertiveVariant" class="variant">
-                  <span class="variant-tag">强势版</span>{{ parseResult(item)!.advice!.assertiveVariant }}
-                </div>
-              </section>
-
-              <section v-if="parseResult(item)!.actions" class="sec">
-                <h4>行动收束</h4>
-                <p><b>现在做：</b>{{ parseResult(item)!.actions!.immediateAction }}</p>
-                <p><b>观察窗口：</b>{{ parseResult(item)!.actions!.observationWindow }}</p>
-                <p><b>停止条件：</b>{{ parseResult(item)!.actions!.stopCondition }}</p>
-              </section>
-
-              <div class="card-foot">
-                <span>{{ item.model }}</span>
-                <span>{{ item.promptTokens || 0 }} + {{ item.completionTokens || 0 }} tokens</span>
-                <span>{{ item.durationMs || 0 }} ms</span>
-              </div>
-            </template>
-
-            <el-alert v-else type="warning" :closable="false" title="结果无法解析，可删除后重新分析" />
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <!-- ============ 下一步建议弹窗 ============ -->
-    <el-dialog v-model="nextStepDialog" title="下一步建议" width="560px">
+    <!-- ============ 建议弹窗 ============ -->
+    <el-dialog v-model="nextStepDialog" title="建议" width="560px">
       <div v-if="activeSession?.nextStepSuggestion" class="next-step-content">
         {{ activeSession.nextStepSuggestion }}
       </div>
@@ -417,17 +218,6 @@
         </div>
       </el-alert>
 
-      <el-form label-width="76px">
-        <el-form-item label="会话名称">
-          <el-input
-            v-model="importForm.chatName"
-            maxlength="60"
-            clearable
-            placeholder="可留空，留空时按文本内容自动识别"
-          />
-        </el-form-item>
-      </el-form>
-
       <el-input
         v-model="importForm.text"
         type="textarea"
@@ -443,115 +233,108 @@
       </template>
     </el-dialog>
 
-    <!-- ============ 说话人映射确认对话框 ============ -->
-    <el-dialog v-model="identityDialog" title="确认「我」是哪个昵称" width="520px">
+    <!-- ============ 选择自己的昵称 ============ -->
+    <el-dialog v-model="identityDialog" title="选择聊天记录中的自己" width="520px">
       <el-alert
         type="info"
         :closable="false"
         show-icon
-        title="请按聊天记录里的原始标签选择。选错会让军师把双方认反，分析方向就全错了。"
+        title="选择后，其他昵称会成为会话名称，本次记录会追加到对应会话。"
         class="dlg-alert"
       />
       <el-form label-width="80px">
-        <el-form-item label="我是">
-          <el-select v-model="identityForm.selfLabels" multiple placeholder="选择代表你的标签" class="full-width">
-            <el-option v-for="s in senderOptions" :key="s.label" :label="s.label + '（' + s.count + '条）'" :value="s.label" />
+        <el-form-item label="我的昵称">
+          <el-select v-model="identityForm.selfLabel" placeholder="请选择" class="full-width">
+            <el-option
+              v-for="s in pendingImport?.senders || []"
+              :key="s.label"
+              :label="s.label + '（' + s.count + '条）'"
+              :value="s.label"
+            />
           </el-select>
         </el-form-item>
-        <el-form-item label="对方是">
-          <el-select v-model="identityForm.targetLabels" multiple placeholder="选择代表对方的标签" class="full-width">
-            <el-option v-for="s in senderOptions" :key="s.label" :label="s.label + '（' + s.count + '条）'" :value="s.label" />
-          </el-select>
+        <el-form-item v-if="targetLabelPreview" label="会话名称">
+          <span class="conversation-preview">{{ targetLabelPreview }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="identityDialog = false">取消</el-button>
-        <el-button type="primary" :loading="identitySaving" @click="saveIdentity">保存并回写历史消息</el-button>
+        <el-button @click="cancelIdentity">取消</el-button>
+        <el-button type="primary" :loading="identitySaving" @click="saveIdentity">确认导入</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- ============ 认识日期 ============ -->
+    <el-dialog v-model="acquaintanceDialog" title="选择认识日期" width="420px">
+      <el-date-picker
+        v-model="acquaintanceDraft"
+        type="date"
+        value-format="YYYY-MM-DD"
+        format="YYYY-MM-DD"
+        placeholder="选择认识日期"
+        clearable
+        :disabled-date="disableFutureDate"
+        class="acquaintance-dialog-picker"
+      />
+      <template #footer>
+        <el-button @click="acquaintanceDialog = false">取消</el-button>
+        <el-button type="primary" :loading="acquaintanceSaving" @click="saveAcquaintanceDate">确认</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Delete, DocumentAdd, Refresh, Search, UserFilled } from '@element-plus/icons-vue'
 import {
-  ArrowDown,
-  ArrowRight,
-  DocumentAdd,
-  EditPen,
-  MagicStick,
-  Refresh,
-  Search,
-  UserFilled
-} from '@element-plus/icons-vue'
-import {
-  confirmWechatIdentity,
+  commitWechatText,
+  deleteWechatSession,
   getWechatStatus,
-  importWechatText,
-  listWechatAnalysis,
   listWechatSessions,
   openWechatChat,
-  renameWechatSession,
+  previewWechatText,
   syncWechatChat,
   updateWechatAcquaintanceDate
 } from '@/api/wechat/chat'
 import type {
-  WechatAnalysis,
-  WechatAnalysisResult,
   WechatChatDetail,
   WechatChatMessage,
-  WechatSessionView
+  WechatSessionView,
+  WechatTextImportPreview
 } from '@/types'
 
 /** 左上角搜索关键字 */
 const keyword = ref('')
 const sessionLoading = ref(false)
 const messageLoading = ref(false)
-const historyLoading = ref(false)
 const syncing = ref(false)
 const identitySaving = ref(false)
 const identityDialog = ref(false)
 const nextStepDialog = ref(false)
+const acquaintanceDialog = ref(false)
 
 /** 导入文本对话框 */
 const importDialog = ref(false)
 const importing = ref(false)
+const pendingImport = ref<WechatTextImportPreview | null>(null)
 
 /** 认识日期编辑状态 */
 const acquaintanceDraft = ref('')
 const acquaintanceSaving = ref(false)
 
-/** 会话改名的就地编辑状态 */
-const nameEditing = ref(false)
-const nameSaving = ref(false)
-const nameDraft = ref('')
-const nameInputRef = ref()
-
 const sessions = ref<WechatSessionView[]>([])
 const activeSession = ref<WechatSessionView | null>(null)
 const messages = ref<WechatChatMessage[]>([])
-const analysisList = ref<WechatAnalysis[]>([])
-const expandedId = ref<number | null>(null)
-const goal = ref('')
 
 const statusReady = ref(false)
 const statusText = ref('正在检测数据源…')
 /** 当前数据源标识：只有 text 支持导入文本 */
 const statusMode = ref('')
 
-const importForm = reactive<{ chatName: string; text: string }>({
-  chatName: '',
+const importForm = reactive<{ text: string }>({
   text: ''
 })
-
-/**
- * 调用 agent 的能力是否启用。
- *
- * 后端已移除调用 agent 的代码，因此初始为 false；
- * 分析按钮据此置灰，避免用户点击后没有任何反馈。
- */
-const agentEnabled = ref(false)
 
 /** 当前数据源是否支持文本导入（未知时按支持处理，避免状态接口失败时按钮直接消失） */
 const importEnabled = computed(() => !statusMode.value || statusMode.value === 'text')
@@ -564,9 +347,8 @@ const importHint = computed(() =>
 
 const messageListRef = ref<HTMLElement | null>(null)
 
-const identityForm = reactive<{ selfLabels: string[]; targetLabels: string[] }>({
-  selfLabels: [],
-  targetLabels: []
+const identityForm = reactive<{ selfLabel: string }>({
+  selfLabel: ''
 })
 
 /**
@@ -586,28 +368,18 @@ const filteredSessions = computed<WechatSessionView[]>(() => {
   return sessions.value.filter((s: WechatSessionView) => (s.displayName || '').toLowerCase().includes(kw))
 })
 
-/** 当前会话的未分析条数 */
-const unanalyzedCount = computed(() => activeSession.value?.unanalyzedCount ?? 0)
-
 /** 自己那一侧的昵称，用于气泡头像 */
 const selfLabel = computed(() => {
   const labels = activeSession.value?.selfLabels ?? []
   return labels.length ? labels[0] : '我'
 })
 
-/** 从消息里汇总出现过的原始发送者标签，供映射确认对话框选择 */
-const senderOptions = computed<{ label: string; count: number }[]>(() => {
-  const map = new Map<string, number>()
-  messages.value.forEach((m: WechatChatMessage) => {
-    const label = m.senderRaw || ''
-    if (label) {
-      map.set(label, (map.get(label) ?? 0) + 1)
-    }
-  })
-  return Array.from(map.entries())
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count)
-})
+const targetLabelPreview = computed(() =>
+  (pendingImport.value?.senders || [])
+    .map((sender) => sender.label)
+    .filter((label) => label !== identityForm.selfLabel)
+    .join('、')
+)
 
 onMounted(async () => {
   await loadStatus()
@@ -621,12 +393,10 @@ async function loadStatus() {
     statusReady.value = !!res.data?.ready
     statusText.value = res.data?.message || ''
     statusMode.value = res.data?.mode || ''
-    agentEnabled.value = !!res.data?.agentEnabled
   } catch {
     statusReady.value = false
     statusText.value = '无法获取数据源状态'
     statusMode.value = ''
-    agentEnabled.value = false
   }
 }
 
@@ -656,11 +426,9 @@ async function selectSession(item: WechatSessionView) {
   activeSession.value = item
   acquaintanceDraft.value = item.acquaintanceDate || ''
   messages.value = []
-  analysisList.value = []
-  expandedId.value = null
   dirtyCount.value = 0
 
-  await Promise.all([loadMessages(item), item.sessionId ? loadHistory() : Promise.resolve()])
+  await loadMessages(item)
 }
 
 /**
@@ -698,8 +466,7 @@ async function loadMessages(item: WechatSessionView) {
  * 打开会话与导入文本返回的是同一种结构，因此共用这一段：
  * 会话列表里就地更新（新会话插到最前），中栏换成新的聊天记录。
  *
- * 刻意不碰右栏的分析记录：调用方常常同时并发拉取历史分析，
- * 在这里清空会把先返回的结果冲掉。
+ * 会话列表同步更新，中栏换成最新聊天记录。
  */
 async function applyDetail(detail: WechatChatDetail) {
   messages.value = detail.messages || []
@@ -713,16 +480,12 @@ async function applyDetail(detail: WechatChatDetail) {
 
 /** 打开导入文本对话框（每次都是干净的，不复用上一次粘贴的内容） */
 function openImportDialog() {
-  importForm.chatName = ''
   importForm.text = ''
   importDialog.value = true
 }
 
 /**
- * 确认导入：把粘贴的文本交给后端解析并归档。
- *
- * 数据来源就是这段文本，不做任何外部调用；[语音] 与 [动画表情] 也会被归档，
- * 因此导入后能在聊天记录里看到它们。
+ * 确认粘贴后先解析昵称，不立即写库。
  */
 async function confirmImport() {
   const text = importForm.text.trim()
@@ -732,39 +495,22 @@ async function confirmImport() {
   }
   importing.value = true
   try {
-    const res = await importWechatText({ chatName: importForm.chatName.trim(), text })
-    const detail = res.data
-    if (!detail) {
-      ElMessage.error('导入失败：服务端没有返回聊天记录')
+    const res = await previewWechatText({ text })
+    const preview = res.data
+    if (!preview) {
+      ElMessage.error('解析失败：服务端没有返回昵称信息')
       return
     }
+    pendingImport.value = preview
+    const hint = preview.senders.find((sender) => ['me', '我', '自己'].includes(sender.label.trim().toLowerCase()))
+    identityForm.selfLabel = hint?.label || ''
     importDialog.value = false
-    await applyDetail(detail)
-    // 导入的可能是已经分析过的老会话，右栏照旧读一次历史
-    await loadHistory()
-    ElMessage.success(`已解析 ${messages.value.length} 条消息，当前会话共 ${detail.total} 条`)
+    identityDialog.value = true
   } catch (e: any) {
     ElMessage.error(e?.message || '文本解析失败')
   } finally {
     importing.value = false
   }
-}
-
-/** 开始修改会话名：用当前名字预填输入框并聚焦 */
-function startEditName() {
-  const item = activeSession.value
-  if (!item?.sessionId) {
-    ElMessage.warning('该会话还没有归档记录，无法改名')
-    return
-  }
-  nameDraft.value = item.displayName
-  nameEditing.value = true
-  nextTick(() => nameInputRef.value?.focus())
-}
-
-/** 放弃本次修改 */
-function cancelEditName() {
-  nameEditing.value = false
 }
 
 function disableFutureDate(date: Date) {
@@ -773,14 +519,25 @@ function disableFutureDate(date: Date) {
   return date.getTime() > today.getTime()
 }
 
+function openAcquaintanceDialog() {
+  const item = activeSession.value
+  if (!item?.sessionId) {
+    ElMessage.warning('请先导入聊天记录')
+    return
+  }
+  acquaintanceDraft.value = item.acquaintanceDate || ''
+  acquaintanceDialog.value = true
+}
+
 /** 保存认识日期；清空日期时后端也会同步清除。 */
-async function saveAcquaintanceDate(value: string | null) {
+async function saveAcquaintanceDate() {
   const item = activeSession.value
   if (!item?.sessionId || acquaintanceSaving.value) {
     return
   }
-  const nextDate = value || ''
+  const nextDate = acquaintanceDraft.value || ''
   if (nextDate === (item.acquaintanceDate || '')) {
+    acquaintanceDialog.value = false
     return
   }
 
@@ -795,6 +552,7 @@ async function saveAcquaintanceDate(value: string | null) {
       acquaintanceDraft.value = res.data.acquaintanceDate || ''
       mergeSessionIntoList(res.data)
     }
+    acquaintanceDialog.value = false
     ElMessage.success(nextDate ? '认识日期已保存' : '认识日期已清除')
   } catch (e: any) {
     acquaintanceDraft.value = item.acquaintanceDate || ''
@@ -804,49 +562,7 @@ async function saveAcquaintanceDate(value: string | null) {
   }
 }
 
-/**
- * 保存会话名。
- *
- * 回车与失焦都会走到这里，因此进入时必须先判断是否仍在编辑态 ——
- * 否则回车触发的那次保存会被紧随其后的 blur 再执行一遍。
- */
-async function saveSessionName() {
-  if (!nameEditing.value || nameSaving.value) {
-    return
-  }
-  const item = activeSession.value
-  if (!item?.sessionId) {
-    nameEditing.value = false
-    return
-  }
-  const name = nameDraft.value.trim()
-  if (!name) {
-    nameEditing.value = false
-    ElMessage.warning('会话名称不能为空，已保留原名')
-    return
-  }
-  if (name === item.displayName) {
-    nameEditing.value = false
-    return
-  }
-
-  nameSaving.value = true
-  try {
-    const res = await renameWechatSession({ sessionId: item.sessionId, displayName: name })
-    if (res.data) {
-      activeSession.value = res.data
-      mergeSessionIntoList(res.data)
-    }
-    nameEditing.value = false
-    ElMessage.success('会话名称已更新')
-  } catch (e: any) {
-    ElMessage.error(e?.message || '会话名称修改失败')
-  } finally {
-    nameSaving.value = false
-  }
-}
-
-/** 手动同步记录（不分析） */
+/** 手动同步记录 */
 async function syncMessages() {
   const item = activeSession.value
   if (!item) {
@@ -873,82 +589,65 @@ async function syncMessages() {
   }
 }
 
-/**
- * 分析入口 —— 当前按要求保留按钮，但点击不执行任何动作。
- *
- * 刻意不做的事：
- * - 不调用后端分析接口，因此不会有任何聊天记录被发送出去
- * - 不弹出任何提示，点击后界面保持原样
- *
- * 已归档的记录与历史分析结果仍由 loadHistory() 正常读取展示，
- * 所以右栏在未触发分析时可以照常查看过去的结果。
- */
-function runAnalysis() {
-  // 分析暂未启用：保留入口，点击无反应
-}
-
-/** 读取历史分析记录（不触发新分析） */
-async function loadHistory() {
-  const sessionId = activeSession.value?.sessionId
-  if (!sessionId) {
-    analysisList.value = []
-    return
-  }
-  historyLoading.value = true
-  try {
-    const res = await listWechatAnalysis(sessionId, 20)
-    analysisList.value = res.data || []
-    if (analysisList.value.length) {
-      expandedId.value = analysisList.value[0].analysisId
-    }
-  } catch {
-    analysisList.value = []
-  } finally {
-    historyLoading.value = false
-  }
-}
-
 async function saveIdentity() {
-  const item = activeSession.value
-  if (!item?.sessionId) {
-    ElMessage.warning('请先同步该会话')
-    return
-  }
-  if (identityForm.selfLabels.length === 0) {
-    ElMessage.warning('请至少选择一个代表「我」的标签')
+  const preview = pendingImport.value
+  if (!preview || !identityForm.selfLabel) {
+    ElMessage.warning('请选择聊天记录中的自己')
     return
   }
   identitySaving.value = true
   try {
-    const res = await confirmWechatIdentity({
-      sessionId: item.sessionId,
-      selfUsername: item.chatUsername,
-      selfLabels: identityForm.selfLabels,
-      targetLabels: identityForm.targetLabels
+    const res = await commitWechatText({
+      importId: preview.importId,
+      selfLabel: identityForm.selfLabel
     })
-    if (res.data) {
-      activeSession.value = res.data
-      mergeSessionIntoList(res.data)
+    const detail = res.data
+    if (!detail) {
+      ElMessage.error('导入失败：服务端没有返回聊天记录')
+      return
     }
     identityDialog.value = false
-    ElMessage.success('映射已保存，历史消息的角色已回写')
-    await loadMessages(activeSession.value!)
+    pendingImport.value = null
+    identityForm.selfLabel = ''
+    await applyDetail(detail)
+    ElMessage.success(`已导入 ${detail.total} 条消息`)
   } catch (e: any) {
-    ElMessage.error(e?.message || '保存失败')
+    ElMessage.error(e?.message || '导入失败')
   } finally {
     identitySaving.value = false
   }
 }
 
-/** 打开映射对话框时，用当前会话已保存的映射或推定值预填 */
-watch(identityDialog, (open: boolean) => {
-  if (!open) {
+function cancelIdentity() {
+  identityDialog.value = false
+  pendingImport.value = null
+  identityForm.selfLabel = ''
+}
+
+async function removeSession(item: WechatSessionView) {
+  if (!item.sessionId) {
     return
   }
-  const item = activeSession.value
-  identityForm.selfLabels = [...(item?.selfLabels ?? [])]
-  identityForm.targetLabels = [...(item?.targetLabels ?? [])]
-})
+  try {
+    await ElMessageBox.confirm(`确定删除会话“${item.displayName}”及其聊天记录吗？`, '删除会话', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消'
+    })
+    await deleteWechatSession(item.sessionId)
+    sessions.value = sessions.value.filter((session) => session.chatUsername !== item.chatUsername)
+    if (activeSession.value?.chatUsername === item.chatUsername) {
+      activeSession.value = null
+      messages.value = []
+      dirtyCount.value = 0
+    }
+    ElMessage.success('会话已删除')
+  } catch (e: any) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e?.message || '删除失败')
+    }
+  }
+}
 
 function mergeSessionIntoList(session: WechatSessionView) {
   const idx = sessions.value.findIndex((s: WechatSessionView) => s.chatUsername === session.chatUsername)
@@ -957,32 +656,6 @@ function mergeSessionIntoList(session: WechatSessionView) {
   } else {
     sessions.value.unshift(session)
   }
-}
-
-function toggleAnalysis(id: number) {
-  expandedId.value = expandedId.value === id ? null : id
-}
-
-/**
- * 解析后端存下来的结果 JSON。
- *
- * 解析失败返回 null，界面会给出"结果无法解析"的提示，而不是直接崩掉。
- */
-const resultCache = new Map<number, WechatAnalysisResult | null>()
-function parseResult(item: WechatAnalysis): WechatAnalysisResult | null {
-  if (resultCache.has(item.analysisId)) {
-    return resultCache.get(item.analysisId) ?? null
-  }
-  let parsed: WechatAnalysisResult | null = null
-  if (item.resultJson) {
-    try {
-      parsed = JSON.parse(item.resultJson) as WechatAnalysisResult
-    } catch {
-      parsed = null
-    }
-  }
-  resultCache.set(item.analysisId, parsed)
-  return parsed
 }
 
 function showDateDivider(index: number) {
@@ -1178,6 +851,23 @@ $wechat-border: #d9d9d9;
   flex: 0 0 auto;
 }
 
+.session-delete {
+  flex: 0 0 auto;
+  padding: 0 2px;
+  color: #a8abb2;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+
+.session-item:hover .session-delete,
+.session-delete:focus {
+  opacity: 1;
+}
+
+.session-delete:hover {
+  color: #f56c6c;
+}
+
 .session-preview {
   font-size: 12px;
   color: #9a9a9a;
@@ -1256,20 +946,6 @@ $wechat-border: #d9d9d9;
   font-size: 16px;
   font-weight: 500;
   color: #1a1a1a;
-}
-
-/* 就地改名的输入框：宽度固定，避免长名字把右侧操作按钮挤走 */
-.chat-name-input {
-  width: 240px;
-}
-
-.rename-btn {
-  padding: 0 4px;
-  color: #9a9a9a;
-
-  &:hover {
-    color: #409eff;
-  }
 }
 
 .chat-actions {
@@ -1351,14 +1027,10 @@ $wechat-border: #d9d9d9;
   flex: 0 0 auto;
 }
 
-.acquaintance-picker {
-  width: 132px;
-}
-
-.acquaintance-days {
-  font-size: 12px;
-  color: #606266;
-  white-space: nowrap;
+.acquaintance-link {
+  padding: 0;
+  color: #409eff;
+  font-size: 13px;
 }
 
 .performance-item {
@@ -1372,34 +1044,6 @@ $wechat-border: #d9d9d9;
 .next-step-btn {
   margin-left: auto;
   flex: 0 0 auto;
-}
-
-.btn-badge {
-  display: inline-block;
-  margin-left: 4px;
-  padding: 0 5px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.3);
-  font-size: 11px;
-  line-height: 16px;
-}
-
-/*
-  tooltip 需要一个可包裹的元素，而 disabled 的按钮不触发鼠标事件，
-  因此用外层 span 兜住 hover，保证禁用状态下提示仍能弹出。
-*/
-.analyze-wrap {
-  display: inline-block;
-}
-
-.identity-alert {
-  margin: 8px 16px 0;
-}
-
-.identity-hint {
-  font-size: 12px;
-  line-height: 1.6;
-  color: #8a6d3b;
 }
 
 .message-list {
@@ -1539,215 +1183,6 @@ $wechat-border: #d9d9d9;
   color: #a5a5a5;
 }
 
-/* 未分析的消息在气泡下标注，让"分析会发送哪些内容"一目了然 */
-.msg-dirty {
-  color: #e6a23c;
-}
-
-.msg-clean {
-  color: #b7b7b7;
-}
-
-/* ---------------- 右侧分析面板 ---------------- */
-.analysis-panel {
-  width: 400px;
-  flex: 0 0 400px;
-  display: flex;
-  flex-direction: column;
-  background: #fff;
-  border-left: 1px solid $wechat-border;
-}
-
-.analysis-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 14px;
-  border-bottom: 1px solid $wechat-border;
-}
-
-.panel-title {
-  font-size: 15px;
-  font-weight: 500;
-}
-
-.analysis-goal {
-  padding: 12px 14px;
-  border-bottom: 1px solid $wechat-border;
-}
-
-.goal-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 8px;
-}
-
-.goal-hint {
-  font-size: 12px;
-  color: #9a9a9a;
-}
-
-.analysis-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 14px;
-}
-
-.analysis-card {
-  border: 1px solid #ebeef5;
-  border-radius: 4px;
-  margin-bottom: 10px;
-  overflow: hidden;
-}
-
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 10px;
-  background: #fafafa;
-  cursor: pointer;
-
-  &:hover {
-    background: #f2f6fc;
-  }
-}
-
-.card-head-left,
-.card-head-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.card-count,
-.card-time {
-  font-size: 12px;
-  color: #9a9a9a;
-}
-
-.card-goal {
-  padding: 6px 10px;
-  font-size: 12px;
-  color: #7a7a7a;
-  background: #fcfcfc;
-  border-top: 1px solid #f5f5f5;
-}
-
-.card-detail {
-  padding: 10px;
-}
-
-.crisis-box {
-  padding: 10px;
-  background: #fef0f0;
-  border: 1px solid #fbc4c4;
-  border-radius: 4px;
-  color: #b13a3a;
-  font-size: 13px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-}
-
-.sec {
-  margin-bottom: 12px;
-
-  h4 {
-    margin: 0 0 6px;
-    font-size: 13px;
-    color: #303133;
-    padding-left: 7px;
-    border-left: 3px solid #409eff;
-  }
-
-  p {
-    margin: 4px 0;
-    font-size: 13px;
-    line-height: 1.7;
-    color: #4a4a4a;
-  }
-
-  ul {
-    margin: 4px 0;
-    padding-left: 20px;
-
-    li {
-      font-size: 13px;
-      line-height: 1.7;
-      color: #4a4a4a;
-    }
-  }
-}
-
-.primary-advice {
-  padding: 8px 10px;
-  background: #ecf5ff;
-  border-radius: 4px;
-  font-weight: 500;
-  color: #1a5fb4 !important;
-}
-
-.primary-advice::before {
-  content: '首选 ';
-  color: #409eff;
-  font-weight: 400;
-}
-
-.fact-group {
-  margin-bottom: 6px;
-}
-
-.fact-title {
-  display: inline-block;
-  padding: 1px 7px;
-  border-radius: 3px;
-  font-size: 11px;
-  margin-bottom: 2px;
-
-  &.known {
-    background: #e8f5e9;
-    color: #2e7d32;
-  }
-
-  &.infer {
-    background: #fff8e1;
-    color: #a67c00;
-  }
-
-  &.unknown {
-    background: #f0f0f0;
-    color: #6a6a6a;
-  }
-}
-
-.variant {
-  margin-top: 6px;
-  font-size: 13px;
-  line-height: 1.7;
-  color: #4a4a4a;
-}
-
-.variant-tag {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: #f0f2f5;
-  color: #6a6a6a;
-  font-size: 11px;
-}
-
-.card-foot {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-top: 8px;
-  border-top: 1px dashed #ebeef5;
-  font-size: 11px;
-  color: #b0b0b0;
-}
-
 .dlg-alert {
   margin-bottom: 14px;
 }
@@ -1767,6 +1202,15 @@ $wechat-border: #d9d9d9;
 
 .import-textarea {
   font-family: Consolas, 'Courier New', monospace;
+}
+
+.acquaintance-dialog-picker {
+  width: 100%;
+}
+
+.conversation-preview {
+  color: #303133;
+  font-weight: 600;
 }
 
 .full-width {

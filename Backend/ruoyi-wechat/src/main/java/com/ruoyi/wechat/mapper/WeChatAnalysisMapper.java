@@ -23,6 +23,11 @@ public interface WeChatAnalysisMapper
     int deleteByIds(@Param("analysisIds") Long[] analysisIds, @Param("userId") Long userId);
 
     /**
+     * 删除会话时同步逻辑删除其历史分析记录。
+     */
+    int deleteBySessionId(@Param("sessionId") Long sessionId);
+
+    /**
      * 更新失败原因。
      *
      * <p>当前模块内已无调用方（写分析结果的链路随 agent 调用一起移除），

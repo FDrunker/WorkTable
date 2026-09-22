@@ -3,10 +3,11 @@ package com.ruoyi.wechat.datasource.text;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.util.DigestUtils;
@@ -17,26 +18,16 @@ import com.ruoyi.wechat.datasource.RawMessage;
 import com.ruoyi.wechat.datasource.SourceStatus;
 import com.ruoyi.wechat.datasource.WechatDataSource;
 import com.ruoyi.wechat.datasource.WechatDataSourceException;
+import com.ruoyi.wechat.domain.TextImportPreview;
+import com.ruoyi.wechat.domain.TextImportPreview.SenderOption;
 import com.ruoyi.wechat.identity.ChatIdentity;
 
 /**
- * 文本数据源 —— 聊天分析功能的数据来源：用户粘贴的聊天记录文本。
+ * 文本数据源 —— 用户粘贴聊天记录后，先预览并选择“我是谁”，再归档到对方昵称对应的会话。
  *
- * <p>工作方式：{@link #submit} 把一段粘贴文本解析成消息并暂存在内存里，
- * 随后归档服务按普通数据源的路径 {@link #fetchMessages} 取数落库。
- * 也就是说，解析之外的所有环节（清洗、映射确认、去重归档、再展示）都与数据来源无关。
- *
- * <p>几个刻意的取舍：
- * <ul>
- *   <li><b>会话标识由会话名派生</b>（{@value #USERNAME_PREFIX} + 会话名的 MD5）。
- *       名字相同就落到同一个会话，于是"再贴一段同一段对话"是幂等追加，
- *       而不会在左侧堆出一串同名会话。</li>
- *   <li><b>文本只留在内存</b>，不落盘、不进日志：聊天记录属于敏感内容，
- *       落库展示已经足够，没必要再多存一份原文。代价是应用重启后
- *       没法对老会话再"同步记录"，此时归档内容照常可读。</li>
- *   <li><b>不做说话人推断</b>。粘贴文本里"我"的昵称无从得知，
- *       猜错会把双方认反，因此一律交给用户在界面上确认映射。</li>
- * </ul>
+ * <p>预览阶段只把解析结果暂存在内存中，不写数据库。确认自己后，会话标识由
+ * “除自己外的昵称”生成，因此同一对象的多次导入会落到同一个会话。
+ * 消息在预览时按时间排序，粘贴顺序错误也不会影响归档顺序。
  */
 public class TextWechatDataSource implements WechatDataSource
 {
@@ -56,62 +47,107 @@ public class TextWechatDataSource implements WechatDataSource
     private static final int NAME_MAX_LENGTH = 60;
 
     /**
-     * 常见的「这就是我」写法。
-     *
-     * <p>只用于给会话起名时避开自己的昵称，<b>不</b>用于角色映射 ——
-     * 映射必须由用户确认。
+     * 常见的「这就是我」写法，仅用于预览时的建议名称，不参与角色写入。
      */
     private static final List<String> SELF_HINTS = List.of("me", "我", "自己");
 
     private final ChatTextParser parser = new ChatTextParser();
 
-    /** 最近一次提交的解析结果，按会话标识索引 */
-    private final Map<String, List<RawMessage>> buffered = new ConcurrentHashMap<>();
+    /** 已预览但尚未确认“我是谁”的文本，按临时导入标识索引 */
+    private final Map<String, PreviewBuffer> buffered = new ConcurrentHashMap<>();
+
+    /** 已完成确认的文本，按稳定会话标识索引 */
+    private final Map<String, List<RawMessage>> committedMessages = new ConcurrentHashMap<>();
 
     /** 提交过的会话摘要 */
     private final Map<String, ChatSession> submitted = new ConcurrentHashMap<>();
 
     /**
-     * 接收一段粘贴文本。
-     *
-     * @param chatName 用户填写的会话名，留空则自动识别
-     * @param text     粘贴的原文
-     * @return 可交给归档服务继续处理的会话摘要
-     * @throws WechatDataSourceException 文本为空、过长或解析不出消息
+     * 解析粘贴文本并返回发送者候选，不写数据库。
      */
-    public ChatSession submit(String chatName, String text)
+    public TextImportPreview preview(Long userId, String text)
     {
-        if (text == null || text.isBlank())
+        if (userId == null)
         {
-            throw new WechatDataSourceException("没有可解析的文本，请先粘贴聊天记录");
-        }
-        if (text.length() > MAX_TEXT_LENGTH)
-        {
-            throw new WechatDataSourceException("粘贴的文本过长："
-                    + text.length() + " 字符，上限 " + MAX_TEXT_LENGTH + " 字符",
-                    "请分批粘贴，每次只贴一段聊天记录");
+            throw new IllegalArgumentException("用户不能为空");
         }
 
-        List<RawMessage> messages = parser.parse(text);
-        if (messages.isEmpty())
+        List<RawMessage> messages = parseAndSort(text);
+        Map<String, Integer> counts = ChatIdentity.countSenders(messages);
+        if (counts.isEmpty())
         {
-            throw new WechatDataSourceException("未能从文本中解析出任何消息",
-                    "每 3 行构成一条消息：第 1 行昵称、第 2 行时间（如 2026-04-01 19:02）、第 3 行消息内容");
+            throw new WechatDataSourceException("文本中没有可识别的聊天昵称",
+                    "每条消息需要按“昵称 / 时间 / 内容”三行格式粘贴");
         }
 
-        String displayName = deriveDisplayName(chatName, messages);
-        String username = USERNAME_PREFIX
-                + DigestUtils.md5DigestAsHex(displayName.getBytes(StandardCharsets.UTF_8));
-        boolean group = distinctSenders(messages) > 2;
+        String importId = USERNAME_PREFIX + "preview-" + UUID.randomUUID();
+        buffered.put(importId, new PreviewBuffer(userId, List.copyOf(messages)));
+
+        List<SenderOption> senders = counts.entrySet().stream()
+                .map(entry -> new SenderOption(entry.getKey(), entry.getValue()))
+                .toList();
+        RawMessage first = messages.get(0);
         RawMessage last = messages.get(messages.size() - 1);
 
-        // 文本源没有"未读"概念，unread 固定为 0
+        return new TextImportPreview(importId, deriveDisplayName(messages), counts.size() > 2,
+                messages.size(), first.time(), last.time(), senders);
+    }
+
+    /**
+     * 确认“我”的昵称并生成稳定会话。
+     *
+     * <p>除自己以外的昵称共同组成会话名；私聊通常会得到唯一对方昵称。
+     */
+    public CommitResult commit(Long userId, String importId, String selfLabel)
+    {
+        if (importId == null || importId.isBlank())
+        {
+            throw new IllegalArgumentException("导入标识不能为空");
+        }
+
+        PreviewBuffer buffer = buffered.get(importId);
+        if (buffer == null)
+        {
+            throw new WechatDataSourceException("本次导入预览已失效",
+                    "请重新粘贴聊天记录后再选择昵称");
+        }
+        if (!Objects.equals(buffer.userId(), userId))
+        {
+            throw new IllegalArgumentException("无权提交该次文本导入");
+        }
+
+        String selectedSelf = selfLabel == null ? "" : selfLabel.trim();
+        Map<String, Integer> counts = ChatIdentity.countSenders(buffer.messages());
+        if (selectedSelf.isEmpty() || !counts.containsKey(selectedSelf))
+        {
+            throw new IllegalArgumentException("请选择聊天记录中实际出现的自己的昵称");
+        }
+
+        List<String> targetLabels = new ArrayList<>();
+        for (String label : counts.keySet())
+        {
+            if (!selectedSelf.equals(label))
+            {
+                targetLabels.add(label);
+            }
+        }
+        if (targetLabels.isEmpty())
+        {
+            throw new IllegalArgumentException("聊天记录里没有识别到对方昵称");
+        }
+
+        String displayName = truncate(String.join("、", targetLabels), NAME_MAX_LENGTH);
+        String username = usernameForDisplayName(displayName);
+        boolean group = counts.size() > 2;
+        RawMessage last = buffer.messages().get(buffer.messages().size() - 1);
         ChatSession session = new ChatSession(username, displayName, group, 0,
                 truncate(last.content(), 40), last.time(), null);
 
-        buffered.put(username, List.copyOf(messages));
+        buffered.remove(importId);
+        committedMessages.put(username, buffer.messages());
         submitted.put(username, session);
-        return session;
+
+        return new CommitResult(session, List.of(selectedSelf), List.copyOf(targetLabels));
     }
 
     @Override
@@ -123,7 +159,7 @@ public class TextWechatDataSource implements WechatDataSource
     @Override
     public SourceStatus probe()
     {
-        return SourceStatus.ok(MODE, "文本数据源：粘贴聊天记录即可导入，无需任何外部依赖");
+        return SourceStatus.ok(MODE, "文本数据源：粘贴聊天记录后选择自己的昵称即可导入");
     }
 
     @Override
@@ -140,10 +176,7 @@ public class TextWechatDataSource implements WechatDataSource
     }
 
     /**
-     * 取出某个会话最近一次粘贴的解析结果。
-     *
-     * <p>归档服务据此落库：重复同步同一段文本是幂等的（归档表按
-     * 「会话 + 时间 + 发送者 + 内容摘要」去重）。
+     * 取出已经确认过的会话文本，归档服务据此落库。
      */
     @Override
     public List<RawMessage> fetchMessages(FetchQuery query)
@@ -152,10 +185,9 @@ public class TextWechatDataSource implements WechatDataSource
         {
             throw new WechatDataSourceException("聊天名不能为空");
         }
-        List<RawMessage> messages = buffered.get(query.chatName());
+        List<RawMessage> messages = committedMessages.get(query.chatName());
         if (messages == null)
         {
-            // 重启后内存里的原文没了，但已归档的内容照常可读
             throw new WechatDataSourceException("该会话没有可再次解析的文本",
                     "粘贴的原文只保留在本次运行的内存中，重新粘贴一次即可继续导入");
         }
@@ -163,15 +195,42 @@ public class TextWechatDataSource implements WechatDataSource
     }
 
     /**
-     * 得出会话名：优先用用户填写的，否则按文本内容自动识别。
+     * 由最终会话名生成稳定标识。
      */
-    private String deriveDisplayName(String chatName, List<RawMessage> messages)
+    public static String usernameForDisplayName(String displayName)
     {
-        if (chatName != null && !chatName.isBlank())
+        return USERNAME_PREFIX
+                + DigestUtils.md5DigestAsHex(displayName.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private List<RawMessage> parseAndSort(String text)
+    {
+        if (text == null || text.isBlank())
         {
-            return truncate(chatName.trim(), NAME_MAX_LENGTH);
+            throw new WechatDataSourceException("没有可解析的文本，请先粘贴聊天记录");
+        }
+        if (text.length() > MAX_TEXT_LENGTH)
+        {
+            throw new WechatDataSourceException("粘贴的文本过长："
+                    + text.length() + " 字符，上限 " + MAX_TEXT_LENGTH + " 字符",
+                    "请分批粘贴，每次只贴一段聊天记录");
         }
 
+        List<RawMessage> messages = new ArrayList<>(parser.parse(text));
+        if (messages.isEmpty())
+        {
+            throw new WechatDataSourceException("未能从文本中解析出任何消息",
+                    "每 3 行构成一条消息：第 1 行昵称、第 2 行时间（如 2026-04-01 19:02）、第 3 行消息内容");
+        }
+        messages.sort(Comparator.comparing(RawMessage::time).thenComparingInt(RawMessage::seq));
+        return messages;
+    }
+
+    /**
+     * 预览阶段只给建议名称，最终名称仍以用户选择后的对方昵称为准。
+     */
+    private String deriveDisplayName(List<RawMessage> messages)
+    {
         Map<String, Integer> counts = ChatIdentity.countSenders(messages);
         if (counts.isEmpty())
         {
@@ -182,7 +241,6 @@ public class TextWechatDataSource implements WechatDataSource
             return truncate(counts.keySet().iterator().next(), NAME_MAX_LENGTH);
         }
 
-        // 私聊且其中一个标签明显是"我"时，另一个就是会话名
         String selfHint = findSelfHint(counts);
         if (selfHint != null && counts.size() == 2)
         {
@@ -195,7 +253,6 @@ public class TextWechatDataSource implements WechatDataSource
             }
         }
 
-        // 兜底：取发言最多的昵称；条数相同时取最先出现的
         return truncate(counts.entrySet().stream()
                 .max(Map.Entry.comparingByValue())
                 .map(Map.Entry::getKey)
@@ -214,19 +271,6 @@ public class TextWechatDataSource implements WechatDataSource
         return null;
     }
 
-    private int distinctSenders(List<RawMessage> messages)
-    {
-        Map<String, Boolean> senders = new LinkedHashMap<>();
-        for (RawMessage m : messages)
-        {
-            if (m.hasSender())
-            {
-                senders.put(m.sender(), Boolean.TRUE);
-            }
-        }
-        return senders.size();
-    }
-
     private String truncate(String s, int max)
     {
         if (s == null || s.isBlank())
@@ -234,5 +278,16 @@ public class TextWechatDataSource implements WechatDataSource
             return FALLBACK_NAME;
         }
         return s.length() <= max ? s : s.substring(0, max);
+    }
+
+    private record PreviewBuffer(Long userId, List<RawMessage> messages)
+    {
+    }
+
+    /**
+     * 文本确认结果。
+     */
+    public record CommitResult(ChatSession session, List<String> selfLabels, List<String> targetLabels)
+    {
     }
 }

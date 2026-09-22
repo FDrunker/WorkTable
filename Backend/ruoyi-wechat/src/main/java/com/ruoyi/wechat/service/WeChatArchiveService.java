@@ -224,40 +224,6 @@ public class WeChatArchiveService
     }
 
     /**
-     * 修改会话展示名。
-     *
-     * <p>只改 {@code display_name}，会话标识保持不变 —— 标识决定归档消息归属，
-     * 跟着改名会让历史记录看起来像是另一个会话的。
-     * 另外，导入时若会话已存在（同名文本再次粘贴）不会覆盖展示名，
-     * 所以这里改的名字不会被后续导入冲掉。
-     *
-     * @param displayName 新名称，首尾空白会被裁掉
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public SessionView renameSession(Long userId, Long sessionId, String displayName, String operator)
-    {
-        requireSession(userId, sessionId);
-
-        String name = displayName == null ? "" : displayName.trim();
-        if (name.isEmpty())
-        {
-            throw new IllegalArgumentException("会话名称不能为空");
-        }
-        if (name.length() > NAME_MAX_LENGTH)
-        {
-            throw new IllegalArgumentException("会话名称过长：上限 " + NAME_MAX_LENGTH + " 个字符");
-        }
-
-        WeChatSession update = new WeChatSession();
-        update.setSessionId(sessionId);
-        update.setDisplayName(name);
-        update.setUpdateBy(operator);
-        sessionMapper.updateSession(update);
-
-        return toView(sessionMapper.selectById(sessionId));
-    }
-
-    /**
      * 设置认识日期。
      *
      * <p>认识天数由后端统一计算并随会话返回，避免前端时间区或本地日期不一致。
@@ -300,6 +266,18 @@ public class WeChatArchiveService
         }
 
         return toView(sessionMapper.selectById(sessionId));
+    }
+
+    /**
+     * 删除会话，并同步逻辑删除消息与历史分析记录。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public int removeSession(Long userId, Long sessionId)
+    {
+        requireSession(userId, sessionId);
+        analysisMapper.deleteBySessionId(sessionId);
+        messageMapper.deleteBySessionId(sessionId);
+        return sessionMapper.deleteByIds(new Long[] { sessionId }, userId);
     }
 
     /**
@@ -365,8 +343,34 @@ public class WeChatArchiveService
         update.setSelfLabels(WeChatSession.joinLabels(selfLabels));
         update.setTargetLabels(WeChatSession.joinLabels(targetLabels));
         update.setIdentityConfirmed(confirmed ? "1" : "0");
+        if (confirmed)
+        {
+            update.setDisplayName(conversationName(targetLabels));
+        }
         update.setUpdateBy(operator);
         sessionMapper.updateSession(update);
+    }
+
+    /**
+     * 对方昵称就是会话名称；多人群聊时按首次出现顺序连接。
+     */
+    private String conversationName(List<String> targetLabels)
+    {
+        if (targetLabels == null || targetLabels.isEmpty())
+        {
+            throw new IllegalArgumentException("必须至少有一个对方昵称");
+        }
+        List<String> labels = targetLabels.stream()
+                .filter(label -> label != null && !label.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (labels.isEmpty())
+        {
+            throw new IllegalArgumentException("对方昵称不能为空");
+        }
+        String name = String.join("、", labels);
+        return name.length() <= NAME_MAX_LENGTH ? name : name.substring(0, NAME_MAX_LENGTH);
     }
 
     /**

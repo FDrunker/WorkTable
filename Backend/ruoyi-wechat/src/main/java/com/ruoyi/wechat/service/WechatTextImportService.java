@@ -7,15 +7,17 @@ import com.ruoyi.wechat.datasource.ChatSession;
 import com.ruoyi.wechat.datasource.WechatDataSourceException;
 import com.ruoyi.wechat.datasource.text.TextWechatDataSource;
 import com.ruoyi.wechat.domain.ChatDetail;
+import com.ruoyi.wechat.domain.TextImportPreview;
 
 /**
- * 文本导入服务 —— 把用户粘贴的聊天记录解析并归档。
+ * 文本导入服务 —— 先解析预览并让用户确认“我是谁”，再归档到对方昵称对应的会话。
  *
  * <p>数据来源已改为"读取文本"，因此这是聊天分析功能的主入口：
  * <ol>
- *   <li>{@link TextWechatDataSource#submit} 解析文本并暂存，得到会话标识；</li>
- *   <li>走归档服务原有的 {@code openChat} 路径落库 —— 清洗、说话人映射、
- *       去重、计数全部复用同一套逻辑，与数据来源无关。</li>
+ *   <li>预览阶段解析文本并把发送者候选返回前端；</li>
+ *   <li>确认阶段按“除自己外的昵称”生成稳定会话标识，再走归档服务原有的
+ *       {@code openChat} 路径落库；</li>
+ *   <li>确认映射后回写消息角色，并把对方昵称保存为会话名称。</li>
  * </ol>
  *
  * <p>重复粘贴同一段文本是幂等的：归档表按「会话 + 时间 + 发送者 + 内容摘要」去重。
@@ -49,19 +51,37 @@ public class WechatTextImportService
      * @param operator 操作人账号，用于审计字段
      * @return 导入后的聊天记录视图，前端可直接渲染
      */
-    public ChatDetail importText(Long userId, String chatName, String text, String operator)
+    public TextImportPreview previewText(Long userId, String text)
+    {
+        return requireTextSource().preview(userId, text);
+    }
+
+    /**
+     * 用户选择自己的昵称后，把预览文本归档到对应会话。
+     */
+    public ChatDetail commitText(Long userId, String importId, String selfLabel, String operator)
+    {
+        TextWechatDataSource source = requireTextSource();
+
+        TextWechatDataSource.CommitResult committed = source.commit(userId, importId, selfLabel);
+        ChatSession session = committed.session();
+        ChatDetail detail = archiveService.openChat(userId, null, session.username(), session.displayName(),
+                session.group(), 0, IMPORT_PAGE_SIZE, true, operator);
+        archiveService.confirmIdentity(userId, detail.session().sessionId(), session.username(),
+                committed.selfLabels(), committed.targetLabels(), operator);
+        return archiveService.openChat(userId, detail.session().sessionId(), null, null,
+                session.group(), 0, IMPORT_PAGE_SIZE, false, operator);
+    }
+
+    private TextWechatDataSource requireTextSource()
     {
         TextWechatDataSource source = textDataSource.getIfAvailable();
-        if (source == null)
+        if (source != null)
         {
-            // 只有 wechat.datasource=text 时才装配文本数据源；其它取值下明确拒绝而不是静默失败
-            String mode = statusService.dataSourceMode();
-            throw new WechatDataSourceException("当前数据源是「" + mode + "」，不支持文本导入",
-                    "请把配置项 wechat.datasource 设为 text 后重启服务");
+            return source;
         }
-
-        ChatSession submitted = source.submit(chatName, text);
-        return archiveService.openChat(userId, null, submitted.username(), submitted.displayName(),
-                submitted.group(), 0, IMPORT_PAGE_SIZE, true, operator);
+        String mode = statusService.dataSourceMode();
+        throw new WechatDataSourceException("当前数据源是「" + mode + "」，不支持文本导入",
+                "请把配置项 wechat.datasource 设为 text 后重启服务");
     }
 }

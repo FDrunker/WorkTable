@@ -1,5 +1,3 @@
-import type { BaseEntity } from '../common'
-
 /** 数据源状态 */
 export interface WechatStatus {
   /** 数据源是否就绪 */
@@ -96,12 +94,27 @@ export interface WechatChatMessage {
   replyScore?: number | null
 }
 
-/** 文本导入请求：格式为每 3 行一条消息 —— 昵称 / 时间 / 消息内容 */
+/** 文本预览请求：格式为每 3 行一条消息 —— 昵称 / 时间 / 消息内容 */
 export interface WechatTextImportRequest {
-  /** 会话名，可留空：留空时由后端按文本内容自动识别 */
-  chatName?: string
   /** 粘贴的聊天记录原文 */
   text: string
+}
+
+/** 文本预览结果 */
+export interface WechatTextImportPreview {
+  importId: string
+  suggestedDisplayName: string
+  group: boolean
+  messageCount: number
+  firstTime: string
+  lastTime: string
+  senders: { label: string; count: number }[]
+}
+
+/** 确认文本导入，指定聊天记录中代表当前用户的昵称 */
+export interface WechatTextImportCommitRequest {
+  importId: string
+  selfLabel: string
 }
 
 /** 设置会话认识日期；日期为空表示清除 */
@@ -117,67 +130,4 @@ export interface WechatChatDetail {
   total: number
   offset: number
   limit: number
-}
-
-/** 军师分析结果 —— 与后端 AnalysisResult 结构一一对应 */
-export interface WechatAnalysisResult {
-  emotionLanding: string | null
-  facts: {
-    knownFacts: string[]
-    inferences: string[]
-    keyUnknowns: string[]
-  } | null
-  interest: { evaluation: string | null } | null
-  advice: {
-    primary: string | null
-    reasons: string[]
-    steadyVariant: string | null
-    flirtyVariant: string | null
-    assertiveVariant: string | null
-  } | null
-  actions: {
-    immediateAction: string | null
-    observationWindow: string | null
-    stopCondition: string | null
-    followUpQuestions: string[]
-  } | null
-  crisisReferral: boolean
-}
-
-/** 分析记录 */
-export interface WechatAnalysis extends BaseEntity {
-  analysisId: number
-  sessionId: number
-  chatName: string
-  goal: string
-  startTime?: string
-  endTime?: string
-  messageCount: number
-  identityDesc?: string
-  refsUsed?: string
-  /** 结构化结果的 JSON 字符串 */
-  resultJson?: string | null
-  promptSnapshot?: string | null
-  /** 0 否 1 是 */
-  crisis: string
-  crisisMessage?: string | null
-  model?: string
-  promptTokens?: number
-  completionTokens?: number
-  durationMs?: number
-  /** 0 成功 1 失败 */
-  status: string
-  errorMsg?: string
-}
-
-/** 身份映射候选 */
-export interface WechatIdentityCandidate {
-  chatName: string
-  group: boolean
-  selfUsername?: string | null
-  autoDetected: boolean
-  senders: { label: string; count: number }[]
-  guessSelf: string[]
-  guessTarget: string[]
-  hint: string
 }

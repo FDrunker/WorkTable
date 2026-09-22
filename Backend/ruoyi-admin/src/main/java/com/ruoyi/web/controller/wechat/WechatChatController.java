@@ -26,8 +26,8 @@ import com.ruoyi.wechat.datasource.SourceStatus;
 import com.ruoyi.wechat.domain.AcquaintanceDateRequest;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.IdentityConfirmRequest;
-import com.ruoyi.wechat.domain.SessionRenameRequest;
 import com.ruoyi.wechat.domain.SessionView;
+import com.ruoyi.wechat.domain.TextImportCommitRequest;
 import com.ruoyi.wechat.domain.TextImportRequest;
 import com.ruoyi.wechat.domain.WeChatAnalysis;
 import com.ruoyi.wechat.service.WeChatArchiveService;
@@ -136,21 +136,25 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 导入粘贴的聊天记录文本。
-     *
-     * <p>这是数据来源的主入口：解析"昵称 / 时间 / 内容"三行格式的文本，
-     * 归档后直接返回聊天记录视图，前端不必再请求一次。
-     *
-     * <p>权限沿用「同步记录」（{@code wechat:message:sync}）：
-     * 导入的实质就是把一批消息写进归档，与同步同权，不必新增一个权限点。
+     * 解析粘贴文本并返回发送者候选，不写数据库。
+     */
+    @PreAuthorize("@ss.hasPermi('wechat:message:sync')")
+    @PostMapping("/text/preview")
+    public AjaxResult previewText(@RequestBody TextImportRequest request)
+    {
+        return AjaxResult.success(textImportService.previewText(getUserId(), request.getText()));
+    }
+
+    /**
+     * 用户选择自己的昵称后，将预览文本归档到对方昵称对应的会话。
      */
     @PreAuthorize("@ss.hasPermi('wechat:message:sync')")
     @Log(title = "微信文本导入", businessType = BusinessType.OTHER)
-    @PostMapping("/text/import")
-    public AjaxResult importText(@RequestBody TextImportRequest request)
+    @PostMapping("/text/commit")
+    public AjaxResult commitText(@RequestBody TextImportCommitRequest request)
     {
-        ChatDetail detail = textImportService.importText(getUserId(), request.getChatName(),
-                request.getText(), getUsername());
+        ChatDetail detail = textImportService.commitText(getUserId(), request.getImportId(),
+                request.getSelfLabel(), getUsername());
         return AjaxResult.success(detail);
     }
 
@@ -194,23 +198,6 @@ public class WechatChatController extends BaseController
     }
 
     /**
-     * 修改会话名称。
-     *
-     * <p>只改展示名，不改会话标识：归档消息的归属由标识决定。
-     * 权限沿用「确认映射」（{@code wechat:identity:edit}）—— 两者都是编辑会话自身的元信息，
-     * 与其新增一个还要重跑菜单 SQL 的权限点，不如合并。
-     */
-    @PreAuthorize("@ss.hasPermi('wechat:identity:edit')")
-    @Log(title = "微信会话名称", businessType = BusinessType.UPDATE)
-    @PostMapping("/session/rename")
-    public AjaxResult renameSession(@RequestBody SessionRenameRequest request)
-    {
-        SessionView view = archiveService.renameSession(getUserId(), request.getSessionId(),
-                request.getDisplayName(), getUsername());
-        return AjaxResult.success(view);
-    }
-
-    /**
      * 设置或清除会话的认识日期。
      *
      * <p>接口现在就返回 acquaintanceDays。好感度、我的发挥和下一步建议同样是
@@ -224,6 +211,17 @@ public class WechatChatController extends BaseController
         SessionView view = archiveService.updateAcquaintanceDate(getUserId(), request.getSessionId(),
                 request.getAcquaintanceDate(), getUsername());
         return AjaxResult.success(view);
+    }
+
+    /**
+     * 删除会话及其消息和历史分析记录。
+     */
+    @PreAuthorize("@ss.hasPermi('wechat:session:remove')")
+    @Log(title = "微信会话", businessType = BusinessType.DELETE)
+    @DeleteMapping("/session/{sessionId}")
+    public AjaxResult removeSession(@PathVariable Long sessionId)
+    {
+        return toAjax(archiveService.removeSession(getUserId(), sessionId));
     }
 
     /**

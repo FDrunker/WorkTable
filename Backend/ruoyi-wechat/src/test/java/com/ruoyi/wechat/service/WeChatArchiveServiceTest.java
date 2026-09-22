@@ -1,6 +1,7 @@
 package com.ruoyi.wechat.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,11 +25,7 @@ import com.ruoyi.wechat.mapper.WeChatMessageMapper;
 import com.ruoyi.wechat.mapper.WeChatSessionMapper;
 
 /**
- * {@link WeChatArchiveService} 的会话改名用例。
- *
- * <p>Mapper 用动态代理做替身：改名这条链路只碰"读会话 / 写会话 / 读计数"几个方法，
- * 为了这几个方法去连数据库或引入 mock 框架都不划算，
- * 而校验（空名、超长、越权）恰恰是最容易写错又最该被钉死的部分。
+ * {@link WeChatArchiveService} 的认识日期、映射、删除与视图透传测试。
  */
 class WeChatArchiveServiceTest
 {
@@ -36,10 +33,15 @@ class WeChatArchiveServiceTest
 
     private static final Long SESSION_ID = 9L;
 
-    /** 替身"数据库"里的会话行 */
     private WeChatSession stored;
 
     private final List<WeChatMessage> storedMessages = new ArrayList<>();
+
+    private boolean messagesDeleted;
+
+    private boolean analysesDeleted;
+
+    private boolean sessionDeleted;
 
     private WeChatArchiveService service;
 
@@ -54,6 +56,7 @@ class WeChatArchiveServiceTest
         stored.setIsGroup("0");
         stored.setSelfLabels("");
         stored.setTargetLabels("");
+        stored.setIdentityConfirmed("0");
         stored.setMsgCount(0);
         stored.setUnanalyzedCount(0);
 
@@ -61,8 +64,12 @@ class WeChatArchiveServiceTest
                 (proxy, method, args) -> switch (method.getName())
                 {
                     case "selectById" -> stored;
-                    // 模拟 update 语句：把非空字段写回"数据库"
                     case "updateSession" -> applyUpdate((WeChatSession) args[0]);
+                    case "deleteByIds" ->
+                    {
+                        sessionDeleted = true;
+                        yield 1;
+                    }
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
         WeChatMessageMapper messageMapper = fake(WeChatMessageMapper.class,
@@ -70,82 +77,27 @@ class WeChatArchiveServiceTest
                 {
                     case "countMessages" -> storedMessages.size();
                     case "selectMessages" -> storedMessages;
+                    case "updateSenderRoleByLabel" -> 1;
+                    case "deleteBySessionId" ->
+                    {
+                        messagesDeleted = true;
+                        yield 1;
+                    }
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
         WeChatAnalysisMapper analysisMapper = fake(WeChatAnalysisMapper.class,
                 (proxy, method, args) -> switch (method.getName())
                 {
                     case "selectBySession" -> List.of();
+                    case "deleteBySessionId" ->
+                    {
+                        analysesDeleted = true;
+                        yield 1;
+                    }
                     default -> throw new UnsupportedOperationException(method.getName());
                 });
 
         service = new WeChatArchiveService(null, null, null, sessionMapper, messageMapper, analysisMapper);
-    }
-
-    @Test
-    @DisplayName("改名：首尾空白被裁掉，返回的会话信息里是新名字")
-    void shouldRenameAndTrimName()
-    {
-        SessionView view = service.renameSession(USER_ID, SESSION_ID, "  小美（暧昧对象）  ", "admin");
-
-        assertEquals("小美（暧昧对象）", view.displayName());
-        assertEquals("小美（暧昧对象）", stored.getDisplayName());
-        // 只改名字，会话标识与归属不动，否则历史消息会变成另一个会话的
-        assertEquals("text:abc123", view.chatUsername());
-        assertEquals(SESSION_ID, view.sessionId());
-    }
-
-    @Test
-    @DisplayName("改名：空名字、纯空白与 null 都被拒绝，且不写库")
-    void shouldRejectBlankName()
-    {
-        assertThrows(IllegalArgumentException.class,
-                () -> service.renameSession(USER_ID, SESSION_ID, "", "admin"));
-        assertThrows(IllegalArgumentException.class,
-                () -> service.renameSession(USER_ID, SESSION_ID, "   ", "admin"));
-        assertThrows(IllegalArgumentException.class,
-                () -> service.renameSession(USER_ID, SESSION_ID, null, "admin"));
-
-        assertEquals("小美", stored.getDisplayName(), "校验失败不应改动会话名");
-    }
-
-    @Test
-    @DisplayName("改名：超长名字被拒绝，避免超出表字段长度")
-    void shouldRejectTooLongName()
-    {
-        String tooLong = "名".repeat(61);
-
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> service.renameSession(USER_ID, SESSION_ID, tooLong, "admin"));
-
-        assertTrue(e.getMessage().contains("上限"));
-        assertEquals("小美", stored.getDisplayName());
-    }
-
-    @Test
-    @DisplayName("改名：不能改别人的会话")
-    void shouldRejectSessionOfOtherUser()
-    {
-        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
-                () -> service.renameSession(2L, SESSION_ID, "改名试试", "admin"));
-
-        assertTrue(e.getMessage().contains("无权访问"));
-        assertEquals("小美", stored.getDisplayName());
-    }
-
-    @Test
-    @DisplayName("改名：会话不存在时报错而不是静默成功")
-    void shouldRejectMissingSession()
-    {
-        WeChatArchiveService emptyService = new WeChatArchiveService(null, null, null,
-                fake(WeChatSessionMapper.class, (proxy, method, args) -> switch (method.getName())
-                {
-                    case "selectById" -> null;
-                    default -> throw new UnsupportedOperationException(method.getName());
-                }), null, null);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> emptyService.renameSession(USER_ID, SESSION_ID, "新名字", "admin"));
     }
 
     @Test
@@ -183,6 +135,41 @@ class WeChatArchiveServiceTest
         assertThrows(IllegalArgumentException.class,
                 () -> service.updateAcquaintanceDate(USER_ID, SESSION_ID,
                         LocalDate.now().plusDays(1).toString(), "admin"));
+    }
+
+    @Test
+    @DisplayName("确认映射：会话名自动取对方昵称，并回写消息角色")
+    void shouldConfirmIdentityAndNameConversation()
+    {
+        SessionView view = service.confirmIdentity(USER_ID, SESSION_ID, "text:target",
+                List.of("我"), List.of("小美"), "admin");
+
+        assertEquals("小美", view.displayName());
+        assertEquals("小美", stored.getDisplayName());
+        assertEquals("我", stored.getSelfLabels());
+        assertEquals("小美", stored.getTargetLabels());
+        assertEquals("1", stored.getIdentityConfirmed());
+    }
+
+    @Test
+    @DisplayName("删除会话：会话、消息与历史分析记录一起逻辑删除")
+    void shouldDeleteSessionData()
+    {
+        int affected = service.removeSession(USER_ID, SESSION_ID);
+
+        assertEquals(1, affected);
+        assertTrue(messagesDeleted);
+        assertTrue(analysesDeleted);
+        assertTrue(sessionDeleted);
+    }
+
+    @Test
+    @DisplayName("删除会话来宾会话：不能删除别人的记录")
+    void shouldRejectDeletingOtherUsersSession()
+    {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.removeSession(2L, SESSION_ID));
+        assertFalse(messagesDeleted || analysesDeleted || sessionDeleted);
     }
 
     @Test
@@ -227,13 +214,21 @@ class WeChatArchiveServiceTest
         {
             stored.setAcquaintanceDate(update.getAcquaintanceDate());
         }
+        if (update.getSelfLabels() != null)
+        {
+            stored.setSelfLabels(update.getSelfLabels());
+        }
+        if (update.getTargetLabels() != null)
+        {
+            stored.setTargetLabels(update.getTargetLabels());
+        }
+        if (update.getIdentityConfirmed() != null)
+        {
+            stored.setIdentityConfirmed(update.getIdentityConfirmed());
+        }
         return 1;
     }
 
-    /**
-     * 生成一个接口的动态代理替身；toString / hashCode / equals 由外层统一兜底，
-     * 免得断言失败打印对象时又抛出 UnsupportedOperationException 掩盖真正的原因。
-     */
     @SuppressWarnings("unchecked")
     private static <T> T fake(Class<T> type, InvocationHandler handler)
     {
