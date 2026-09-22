@@ -390,10 +390,17 @@ public class WeChatArchiveService
             throw new IllegalArgumentException("必须提供 sessionId 或 chatUsername");
         }
 
-        WeChatSession existing = sessionMapper.selectByUserAndChat(userId, chatUsername);
-        if (existing != null)
+        WeChatSession existing = sessionMapper.selectAnyByUserAndChat(userId, chatUsername);
+        if (existing != null && DEL_FLAG_NORMAL.equals(existing.getDelFlag()))
         {
             return existing;
+        }
+        if (existing != null)
+        {
+            // 逻辑删除的会话仍占用唯一键，重新导入同一聊天前先清理这个占位行。
+            sessionMapper.purgeDeletedById(existing.getSessionId(), userId);
+            log.info("清理已删除的会话占位：userId={}, sessionId={}, chat={}",
+                    userId, existing.getSessionId(), chatUsername);
         }
 
         WeChatSession created = new WeChatSession();
@@ -407,8 +414,18 @@ public class WeChatArchiveService
         created.setIdentityConfirmed("0");
         created.setMsgCount(0);
         created.setUnanalyzedCount(0);
+        created.setDelFlag(DEL_FLAG_NORMAL);
         created.setCreateBy(operator);
-        sessionMapper.insertSession(created);
+        int inserted = sessionMapper.insertSessionIfAbsent(created);
+        if (inserted == 0)
+        {
+            WeChatSession concurrent = sessionMapper.selectActiveByUserAndChatForUpdate(userId, chatUsername);
+            if (concurrent != null)
+            {
+                return concurrent;
+            }
+            throw new IllegalStateException("创建会话失败，请重试");
+        }
         log.info("归档新会话：userId={}, chat={}", userId, chatUsername);
         return created;
     }

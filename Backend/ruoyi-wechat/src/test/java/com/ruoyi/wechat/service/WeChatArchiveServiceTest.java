@@ -33,6 +33,8 @@ class WeChatArchiveServiceTest
 
     private static final Long SESSION_ID = 9L;
 
+    private static final Long NEW_SESSION_ID = 10L;
+
     private WeChatSession stored;
 
     private final List<WeChatMessage> storedMessages = new ArrayList<>();
@@ -42,6 +44,10 @@ class WeChatArchiveServiceTest
     private boolean analysesDeleted;
 
     private boolean sessionDeleted;
+
+    private boolean deletedSessionPurged;
+
+    private boolean sessionInserted;
 
     private WeChatArchiveService service;
 
@@ -59,11 +65,28 @@ class WeChatArchiveServiceTest
         stored.setIdentityConfirmed("0");
         stored.setMsgCount(0);
         stored.setUnanalyzedCount(0);
+        stored.setDelFlag("0");
 
         WeChatSessionMapper sessionMapper = fake(WeChatSessionMapper.class,
                 (proxy, method, args) -> switch (method.getName())
                 {
                     case "selectById" -> stored;
+                    case "selectAnyByUserAndChat" -> stored;
+                    case "selectActiveByUserAndChatForUpdate" -> isActive(stored) ? stored : null;
+                    case "insertSessionIfAbsent" ->
+                    {
+                        sessionInserted = true;
+                        WeChatSession created = (WeChatSession) args[0];
+                        created.setSessionId(NEW_SESSION_ID);
+                        stored = created;
+                        yield 1;
+                    }
+                    case "purgeDeletedById" ->
+                    {
+                        deletedSessionPurged = true;
+                        stored = null;
+                        yield 1;
+                    }
                     case "updateSession" -> applyUpdate((WeChatSession) args[0]);
                     case "deleteByIds" ->
                     {
@@ -173,6 +196,21 @@ class WeChatArchiveServiceTest
     }
 
     @Test
+    @DisplayName("重新导入：已删除会话的占位记录会被清理并创建新会话")
+    void shouldReplaceDeletedSessionWhenImportingAgain()
+    {
+        stored.setDelFlag("2");
+
+        var detail = service.openChat(USER_ID, null, stored.getChatUsername(), "小美", false,
+                0, 20, false, "admin");
+
+        assertTrue(deletedSessionPurged);
+        assertTrue(sessionInserted);
+        assertEquals(NEW_SESSION_ID, detail.session().sessionId());
+        assertEquals("0", stored.getDelFlag());
+    }
+
+    @Test
     @DisplayName("聊天详情：消息洞察与回答评分字段完整透传")
     void shouldExposeMessageInsights()
     {
@@ -227,6 +265,11 @@ class WeChatArchiveServiceTest
             stored.setIdentityConfirmed(update.getIdentityConfirmed());
         }
         return 1;
+    }
+
+    private static boolean isActive(WeChatSession session)
+    {
+        return session != null && "0".equals(session.getDelFlag());
     }
 
     @SuppressWarnings("unchecked")

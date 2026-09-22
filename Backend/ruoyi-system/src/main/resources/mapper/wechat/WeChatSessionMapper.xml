@@ -39,10 +39,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         from sys_wechat_session
     </sql>
 
-    <select id="selectByUserAndChat" resultMap="WeChatSessionResult">
+    <select id="selectAnyByUserAndChat" resultMap="WeChatSessionResult">
+        <include refid="selectSessionVo"/>
+        where user_id = #{userId} and chat_username = #{chatUsername}
+        limit 1
+    </select>
+
+    <select id="selectActiveByUserAndChatForUpdate" resultMap="WeChatSessionResult">
         <include refid="selectSessionVo"/>
         where user_id = #{userId} and chat_username = #{chatUsername} and del_flag = '0'
         limit 1
+        for update
     </select>
 
     <select id="selectSessionsByUser" resultMap="WeChatSessionResult">
@@ -61,7 +68,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where session_id = #{sessionId} and del_flag = '0'
     </select>
 
-    <insert id="insertSession" parameterType="com.ruoyi.wechat.domain.WeChatSession" useGeneratedKeys="true" keyProperty="sessionId">
+    <insert id="insertSessionIfAbsent" parameterType="com.ruoyi.wechat.domain.WeChatSession" useGeneratedKeys="true" keyProperty="sessionId">
         insert into sys_wechat_session (
             user_id, chat_username, display_name, is_group, self_username, self_labels,
             target_labels, identity_confirmed, msg_count, unanalyzed_count, synced_until,
@@ -73,7 +80,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             #{lastSyncTime}, #{affinityScore}, #{acquaintanceDate}, #{myPerformanceScore},
             #{nextStepSuggestion}, '0', #{createBy}, sysdate(), #{remark}
         )
+        on duplicate key update session_id = session_id
     </insert>
+
+    <delete id="purgeDeletedById">
+        delete from sys_wechat_session
+        where session_id = #{sessionId} and user_id = #{userId} and del_flag = '2'
+    </delete>
 
     <update id="updateSession" parameterType="com.ruoyi.wechat.domain.WeChatSession">
         update sys_wechat_session

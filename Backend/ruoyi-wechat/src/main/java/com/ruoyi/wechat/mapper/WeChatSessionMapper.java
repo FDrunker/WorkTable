@@ -12,9 +12,16 @@ import com.ruoyi.wechat.domain.WeChatSession;
 public interface WeChatSessionMapper
 {
     /**
-     * 按用户与微信标识查询会话。
+     * 按用户与微信标识查询会话，包含已逻辑删除的占位记录。
      */
-    WeChatSession selectByUserAndChat(@Param("userId") Long userId, @Param("chatUsername") String chatUsername);
+    WeChatSession selectAnyByUserAndChat(@Param("userId") Long userId,
+            @Param("chatUsername") String chatUsername);
+
+    /**
+     * 加锁查询有效会话，用于并发创建后的唯一键兜底。
+     */
+    WeChatSession selectActiveByUserAndChatForUpdate(@Param("userId") Long userId,
+            @Param("chatUsername") String chatUsername);
 
     /**
      * 查询用户的会话列表。
@@ -23,7 +30,17 @@ public interface WeChatSessionMapper
 
     WeChatSession selectById(@Param("sessionId") Long sessionId);
 
-    int insertSession(WeChatSession session);
+    /**
+     * 仅当用户与微信标识尚不存在时插入会话。
+     *
+     * @return 实际新增返回 1，命中唯一键返回 0
+     */
+    int insertSessionIfAbsent(WeChatSession session);
+
+    /**
+     * 物理清理已逻辑删除的会话占位，释放用户与微信标识的唯一键。
+     */
+    int purgeDeletedById(@Param("sessionId") Long sessionId, @Param("userId") Long userId);
 
     int updateSession(WeChatSession session);
 
