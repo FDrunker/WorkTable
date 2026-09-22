@@ -18,6 +18,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="analyzed"     column="analyzed"      />
         <result property="analyzedTime" column="analyzed_time" />
         <result property="analysisId"   column="analysis_id"   />
+        <result property="emotionTag"    column="emotion_tag"    />
+        <result property="emotionPercent" column="emotion_percent" />
+        <result property="intentTag"     column="intent_tag"     />
+        <result property="intentPercent" column="intent_percent" />
+        <result property="replyRating"   column="reply_rating"   />
+        <result property="replyScore"    column="reply_score"    />
         <result property="delFlag"      column="del_flag"      />
         <result property="createTime"   column="create_time"   />
     </resultMap>
@@ -25,7 +31,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectMessageVo">
         select message_id, session_id, user_id, msg_time, msg_date, sender_raw, sender_role,
                content, content_md5, msg_kind, analyzed, analyzed_time, analysis_id,
-               del_flag, create_time
+               emotion_tag, emotion_percent, intent_tag, intent_percent,
+               reply_rating, reply_score, del_flag, create_time
         from sys_wechat_message
     </sql>
 

@@ -120,6 +120,50 @@
           </div>
         </header>
 
+        <div v-if="activeSession.sessionId" class="relationship-bar">
+          <div class="relationship-item affinity-item">
+            <div class="relationship-copy">
+              <span class="relationship-label">当前好感度</span>
+              <span class="relationship-value">
+                {{ formatScore(activeSession.affinityScore) }}
+                <small v-if="activeSession.affinityScore != null">%</small>
+              </span>
+            </div>
+            <div class="affinity-track" aria-hidden="true">
+              <span :style="{ width: affinityWidth(activeSession.affinityScore) }"></span>
+            </div>
+          </div>
+
+          <div class="relationship-item acquaintance-item">
+            <span class="relationship-label">认识</span>
+            <el-date-picker
+              v-model="acquaintanceDraft"
+              type="date"
+              value-format="YYYY-MM-DD"
+              format="YYYY-MM-DD"
+              placeholder="选择认识日期"
+              size="small"
+              clearable
+              :disabled="acquaintanceSaving"
+              :disabled-date="disableFutureDate"
+              class="acquaintance-picker"
+              @change="saveAcquaintanceDate"
+            />
+            <span class="acquaintance-days">
+              {{ activeSession.acquaintanceDays != null ? `第 ${activeSession.acquaintanceDays} 天` : '天数待填写' }}
+            </span>
+          </div>
+
+          <div class="relationship-item performance-item">
+            <span class="relationship-label">我的发挥</span>
+            <span class="performance-score">{{ formatScore(activeSession.myPerformanceScore) }}</span>
+          </div>
+
+          <el-button type="primary" size="small" class="next-step-btn" @click="nextStepDialog = true">
+            下一步
+          </el-button>
+        </div>
+
         <!-- 说话人映射确认：军师 skill 要求映射不明时必须先问 -->
         <el-alert
           v-if="!activeSession.identityConfirmed"
@@ -162,6 +206,30 @@
                 </div>
                 <!-- 用 div 而非 span 承载内容，避免 {{ }} 表达式跨行触发 prettier 误格式化 -->
                 <div class="msg-bubble" :class="bubbleClass(msg)">{{ msg.content }}</div>
+                <div v-if="msg.senderRole === 'TARGET'" class="msg-insights">
+                  <div class="insight-line">
+                    <span class="insight-label">情绪</span>
+                    <el-tag size="small" effect="plain" type="warning">
+                      {{ msg.emotionTag || '待分析' }}
+                    </el-tag>
+                    <span class="insight-percent">{{ formatPercent(msg.emotionPercent) }}</span>
+                  </div>
+                  <div class="insight-line">
+                    <span class="insight-label">意图</span>
+                    <el-tag size="small" effect="plain" type="info">
+                      {{ msg.intentTag || '待分析' }}
+                    </el-tag>
+                    <span class="insight-percent">{{ formatPercent(msg.intentPercent) }}</span>
+                  </div>
+                </div>
+                <div v-else-if="msg.senderRole === 'SELF'" class="reply-rating">
+                  <span class="insight-label">回答评级</span>
+                  <el-tag v-if="msg.replyRating" size="small" type="success" effect="plain">
+                    {{ msg.replyRating }}
+                  </el-tag>
+                  <span v-else class="rating-pending">待评估</span>
+                  <span v-if="msg.replyScore != null" class="reply-score">{{ formatScore(msg.replyScore) }} 分</span>
+                </div>
                 <div class="msg-meta">
                   <span class="msg-time">{{ onlyTime(msg.time) }}</span>
                   <span v-if="!msg.analyzed" class="msg-dirty">未分析</span>
@@ -328,6 +396,17 @@
       </div>
     </aside>
 
+    <!-- ============ 下一步建议弹窗 ============ -->
+    <el-dialog v-model="nextStepDialog" title="下一步建议" width="560px">
+      <div v-if="activeSession?.nextStepSuggestion" class="next-step-content">
+        {{ activeSession.nextStepSuggestion }}
+      </div>
+      <el-empty v-else description="暂无建议，待后续分析生成" :image-size="80" />
+      <template #footer>
+        <el-button type="primary" @click="nextStepDialog = false">知道了</el-button>
+      </template>
+    </el-dialog>
+
     <!-- ============ 导入文本对话框（数据来源：粘贴文本） ============ -->
     <el-dialog v-model="importDialog" title="导入聊天记录文本" width="660px" top="5vh">
       <el-alert type="info" :closable="false" show-icon class="dlg-alert"
@@ -414,7 +493,8 @@ import {
   listWechatSessions,
   openWechatChat,
   renameWechatSession,
-  syncWechatChat
+  syncWechatChat,
+  updateWechatAcquaintanceDate
 } from '@/api/wechat/chat'
 import type {
   WechatAnalysis,
@@ -432,10 +512,15 @@ const historyLoading = ref(false)
 const syncing = ref(false)
 const identitySaving = ref(false)
 const identityDialog = ref(false)
+const nextStepDialog = ref(false)
 
 /** 导入文本对话框 */
 const importDialog = ref(false)
 const importing = ref(false)
+
+/** 认识日期编辑状态 */
+const acquaintanceDraft = ref('')
+const acquaintanceSaving = ref(false)
 
 /** 会话改名的就地编辑状态 */
 const nameEditing = ref(false)
@@ -569,6 +654,7 @@ async function loadSessions() {
  */
 async function selectSession(item: WechatSessionView) {
   activeSession.value = item
+  acquaintanceDraft.value = item.acquaintanceDate || ''
   messages.value = []
   analysisList.value = []
   expandedId.value = null
@@ -619,6 +705,7 @@ async function applyDetail(detail: WechatChatDetail) {
   messages.value = detail.messages || []
   // 同步/导入后后端可能已经创建了会话或刷新了计数，用最新数据回填
   activeSession.value = detail.session
+  acquaintanceDraft.value = detail.session.acquaintanceDate || ''
   mergeSessionIntoList(detail.session)
   dirtyCount.value = Math.max((detail.total || 0) - messages.value.length, 0)
   await scrollToBottom()
@@ -678,6 +765,43 @@ function startEditName() {
 /** 放弃本次修改 */
 function cancelEditName() {
   nameEditing.value = false
+}
+
+function disableFutureDate(date: Date) {
+  const today = new Date()
+  today.setHours(23, 59, 59, 999)
+  return date.getTime() > today.getTime()
+}
+
+/** 保存认识日期；清空日期时后端也会同步清除。 */
+async function saveAcquaintanceDate(value: string | null) {
+  const item = activeSession.value
+  if (!item?.sessionId || acquaintanceSaving.value) {
+    return
+  }
+  const nextDate = value || ''
+  if (nextDate === (item.acquaintanceDate || '')) {
+    return
+  }
+
+  acquaintanceSaving.value = true
+  try {
+    const res = await updateWechatAcquaintanceDate({
+      sessionId: item.sessionId,
+      acquaintanceDate: nextDate
+    })
+    if (res.data) {
+      activeSession.value = res.data
+      acquaintanceDraft.value = res.data.acquaintanceDate || ''
+      mergeSessionIntoList(res.data)
+    }
+    ElMessage.success(nextDate ? '认识日期已保存' : '认识日期已清除')
+  } catch (e: any) {
+    acquaintanceDraft.value = item.acquaintanceDate || ''
+    ElMessage.error(e?.message || '认识日期保存失败')
+  } finally {
+    acquaintanceSaving.value = false
+  }
 }
 
 /**
@@ -921,6 +1045,25 @@ function onlyTime(time?: string | null) {
   return m ? m[1] : time
 }
 
+function formatScore(value?: number | null) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '--'
+  }
+  const number = Number(value)
+  return Number.isInteger(number) ? String(number) : number.toFixed(1)
+}
+
+function formatPercent(value?: number | null) {
+  return value === null || value === undefined ? '--' : `${formatScore(value)}%`
+}
+
+function affinityWidth(value?: number | null) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return '0%'
+  }
+  return `${Math.min(Math.max(Number(value), 0), 100)}%`
+}
+
 async function scrollToBottom() {
   await nextTick()
   const el = messageListRef.value
@@ -1135,6 +1278,102 @@ $wechat-border: #d9d9d9;
   gap: 8px;
 }
 
+.relationship-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  row-gap: 8px;
+  padding: 9px 16px;
+  background: #fff;
+  border-bottom: 1px solid $wechat-border;
+}
+
+.relationship-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.relationship-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #8a8a8a;
+}
+
+.relationship-value,
+.performance-score {
+  color: #303133;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  small {
+    font-size: 11px;
+    font-weight: 400;
+  }
+}
+
+.affinity-item {
+  flex: 0 0 170px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 8px;
+}
+
+.relationship-copy {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  grid-column: 1 / 3;
+}
+
+.affinity-track {
+  grid-column: 1 / 3;
+  height: 5px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #f0f2f5;
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #e6a23c;
+    transition: width 0.2s ease;
+  }
+}
+
+.acquaintance-item {
+  flex: 0 0 auto;
+}
+
+.acquaintance-picker {
+  width: 132px;
+}
+
+.acquaintance-days {
+  font-size: 12px;
+  color: #606266;
+  white-space: nowrap;
+}
+
+.performance-item {
+  margin-left: 4px;
+}
+
+.performance-score {
+  color: #409eff;
+}
+
+.next-step-btn {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
 .btn-badge {
   display: inline-block;
   margin-left: 4px;
@@ -1251,6 +1490,44 @@ $wechat-border: #d9d9d9;
 
 .msg-row.self .msg-bubble {
   background: $wechat-green;
+}
+
+.msg-insights {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.insight-line,
+.reply-rating {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 20px;
+}
+
+.insight-label {
+  color: #8a8a8a;
+}
+
+.insight-percent {
+  color: #606266;
+  font-variant-numeric: tabular-nums;
+}
+
+.reply-rating {
+  margin-top: 6px;
+}
+
+.rating-pending {
+  color: #a8abb2;
+}
+
+.reply-score {
+  color: #409eff;
+  font-variant-numeric: tabular-nums;
 }
 
 .msg-meta {
@@ -1473,6 +1750,13 @@ $wechat-border: #d9d9d9;
 
 .dlg-alert {
   margin-bottom: 14px;
+}
+
+.next-step-content {
+  color: #4a4a4a;
+  font-size: 14px;
+  line-height: 1.8;
+  white-space: pre-wrap;
 }
 
 .import-format {

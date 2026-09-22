@@ -2,6 +2,7 @@ package com.ruoyi.wechat.domain;
 
 import com.ruoyi.common.core.domain.BaseEntity;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -54,6 +55,18 @@ public class WeChatSession extends BaseEntity
 
     /** 最后同步时间 */
     private java.util.Date lastSyncTime;
+
+    /** 当前好感度百分比，空表示尚未计算 */
+    private BigDecimal affinityScore;
+
+    /** 用户填写的认识日期，格式 yyyy-MM-dd */
+    private String acquaintanceDate;
+
+    /** 我方回答综合得分 */
+    private BigDecimal myPerformanceScore;
+
+    /** 下一步建议，预留给大模型输出 */
+    private String nextStepSuggestion;
 
     /** 删除标志（0存在 2删除） */
     private String delFlag;
@@ -241,6 +254,46 @@ public class WeChatSession extends BaseEntity
     public void setLastSyncTime(java.util.Date lastSyncTime)
     {
         this.lastSyncTime = lastSyncTime;
+    }
+
+    public BigDecimal getAffinityScore()
+    {
+        return affinityScore;
+    }
+
+    public void setAffinityScore(BigDecimal affinityScore)
+    {
+        this.affinityScore = affinityScore;
+    }
+
+    public String getAcquaintanceDate()
+    {
+        return acquaintanceDate;
+    }
+
+    public void setAcquaintanceDate(String acquaintanceDate)
+    {
+        this.acquaintanceDate = acquaintanceDate;
+    }
+
+    public BigDecimal getMyPerformanceScore()
+    {
+        return myPerformanceScore;
+    }
+
+    public void setMyPerformanceScore(BigDecimal myPerformanceScore)
+    {
+        this.myPerformanceScore = myPerformanceScore;
+    }
+
+    public String getNextStepSuggestion()
+    {
+        return nextStepSuggestion;
+    }
+
+    public void setNextStepSuggestion(String nextStepSuggestion)
+    {
+        this.nextStepSuggestion = nextStepSuggestion;
     }
 
     public String getDelFlag()

@@ -1,6 +1,9 @@
 package com.ruoyi.wechat.service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -142,7 +145,8 @@ public class WeChatArchiveService
         {
             views.add(new ChatMessageView(m.getMessageId(), m.getMsgTime(), m.getMsgDate(),
                     m.getSenderRole(), m.getSenderRaw(), m.getContent(), m.getMsgKind(),
-                    "1".equals(m.getAnalyzed())));
+                    "1".equals(m.getAnalyzed()), m.getEmotionTag(), m.getEmotionPercent(),
+                    m.getIntentTag(), m.getIntentPercent(), m.getReplyRating(), m.getReplyScore()));
         }
 
         return new ChatDetail(toView(session), views, total, effectiveOffset, effectiveLimit);
@@ -247,6 +251,27 @@ public class WeChatArchiveService
         WeChatSession update = new WeChatSession();
         update.setSessionId(sessionId);
         update.setDisplayName(name);
+        update.setUpdateBy(operator);
+        sessionMapper.updateSession(update);
+
+        return toView(sessionMapper.selectById(sessionId));
+    }
+
+    /**
+     * 设置认识日期。
+     *
+     * <p>认识天数由后端统一计算并随会话返回，避免前端时间区或本地日期不一致。
+     * 传空值表示清除日期。后续好感度与模型结果可以复用同一条会话更新链路。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SessionView updateAcquaintanceDate(Long userId, Long sessionId, String acquaintanceDate,
+            String operator)
+    {
+        requireSession(userId, sessionId);
+
+        WeChatSession update = new WeChatSession();
+        update.setSessionId(sessionId);
+        update.setAcquaintanceDate(normalizeAcquaintanceDate(acquaintanceDate));
         update.setUpdateBy(operator);
         sessionMapper.updateSession(update);
 
@@ -423,7 +448,52 @@ public class WeChatArchiveService
                 s.getMsgCount() == null ? 0 : s.getMsgCount(),
                 s.getUnanalyzedCount() == null ? 0 : s.getUnanalyzedCount(),
                 analysisCount, lastTime, lastMessage,
-                s.getLastSyncTime() == null ? null : s.getLastSyncTime().toString());
+                s.getLastSyncTime() == null ? null : s.getLastSyncTime().toString(),
+                s.getAffinityScore(), s.getAcquaintanceDate(),
+                calculateAcquaintanceDays(s.getAcquaintanceDate()),
+                s.getMyPerformanceScore(), s.getNextStepSuggestion());
+    }
+
+    private String normalizeAcquaintanceDate(String raw)
+    {
+        if (raw == null || raw.isBlank())
+        {
+            return "";
+        }
+
+        String value = raw.trim();
+        try
+        {
+            LocalDate date = LocalDate.parse(value);
+            if (date.isAfter(LocalDate.now()))
+            {
+                throw new IllegalArgumentException("认识日期不能晚于今天");
+            }
+            return date.toString();
+        }
+        catch (DateTimeParseException e)
+        {
+            throw new IllegalArgumentException("认识日期格式应为 yyyy-MM-dd");
+        }
+    }
+
+    /**
+     * 认识当天记为第 1 天，符合用户日常表达习惯。
+     */
+    private Long calculateAcquaintanceDays(String value)
+    {
+        if (value == null || value.isBlank())
+        {
+            return null;
+        }
+        try
+        {
+            return ChronoUnit.DAYS.between(LocalDate.parse(value), LocalDate.now()) + 1;
+        }
+        catch (DateTimeParseException e)
+        {
+            return null;
+        }
     }
 
     private String extractDate(String time)

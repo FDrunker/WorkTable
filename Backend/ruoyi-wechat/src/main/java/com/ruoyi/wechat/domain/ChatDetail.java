@@ -5,8 +5,8 @@ import java.util.List;
 /**
  * 打开某个会话后的完整视图。
  *
- * <p>注意这里<b>不包含任何分析结果</b>：按需求，点进会话只显示聊天记录，
- * 分析历史由 {@code /analysis/list} 单独拉取，避免"打开会话"这个动作触发任何 LLM 调用。
+ * <p>这里可能携带已经落库的关系与消息洞察字段，但打开会话本身
+ * <b>不会触发任何 LLM 调用</b>；完整分析历史仍由 {@code /analysis/list} 单独拉取。
  *
  * @param session  会话信息
  * @param messages 消息（按时间升序）

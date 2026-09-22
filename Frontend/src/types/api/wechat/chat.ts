@@ -50,6 +50,16 @@ export interface WechatSessionView {
   lastMessage?: string | null
   /** 最后同步时间 */
   lastSyncTime?: string | null
+  /** 当前好感度百分比，null 表示尚未计算 */
+  affinityScore?: number | null
+  /** 用户填写的认识日期 */
+  acquaintanceDate?: string | null
+  /** 认识天数，认识当天为第 1 天 */
+  acquaintanceDays?: number | null
+  /** 我的回答综合发挥得分 */
+  myPerformanceScore?: number | null
+  /** 下一步建议，后续由大模型结果填充 */
+  nextStepSuggestion?: string | null
   /** 是否已归档 */
   archived: boolean
 }
@@ -72,6 +82,18 @@ export interface WechatChatMessage {
   kind: string
   /** 是否已参与过分析 */
   analyzed: boolean
+  /** 对方消息情绪标签 */
+  emotionTag?: string | null
+  /** 情绪标签百分比 */
+  emotionPercent?: number | null
+  /** 对方消息意图标签 */
+  intentTag?: string | null
+  /** 意图标签百分比 */
+  intentPercent?: number | null
+  /** 我方回答评级 */
+  replyRating?: string | null
+  /** 我方回答得分 */
+  replyScore?: number | null
 }
 
 /** 文本导入请求：格式为每 3 行一条消息 —— 昵称 / 时间 / 消息内容 */
@@ -80,6 +102,12 @@ export interface WechatTextImportRequest {
   chatName?: string
   /** 粘贴的聊天记录原文 */
   text: string
+}
+
+/** 设置会话认识日期；日期为空表示清除 */
+export interface WechatAcquaintanceDateRequest {
+  sessionId: number
+  acquaintanceDate?: string | null
 }
 
 /** 打开会话的返回 */

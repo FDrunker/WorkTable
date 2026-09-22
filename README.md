@@ -105,6 +105,11 @@ npm run build:prod   # 生产构建
 - **幂等**：会话标识由会话名派生，重复粘贴同一段对话是追加去重，不会重复建会话。
 - **会话名可改**：聊天界面标题上的铅笔按钮可就地改名（`POST /wechat/session/rename`，沿用 `wechat:identity:edit` 权限）。
   只改展示名，会话标识不变 —— 所以改过名的会话在后续导入里依然是同一个会话，不会被拆成两个，也不会被重新导入冲掉。
+- **关系面板**：聊天区顶部展示当前好感度、认识天数、我的发挥和下一步建议入口。
+  认识日期由用户选择，通过 `POST /wechat/session/acquaintance-date` 保存；认识当天按第 1 天计算。
+- **消息洞察协议**：会话响应预留 `affinityScore`、`myPerformanceScore`、`nextStepSuggestion`；
+  消息响应预留 `emotionTag` / `emotionPercent`、`intentTag` / `intentPercent`、
+  `replyRating` / `replyScore`。当前没有计算数据时前端显示“待分析 / 待评估”，后续模型链路可直接回填这些字段。
 - **切换来源**：`wechat.datasource` 可选 `text`（默认）、`mock`（内置样例）、`cli`（本地 wechat-cli）；
   只有 `text` 支持文本导入，其余取值下「导入文本」按钮会置灰并说明原因。
 
@@ -120,6 +125,8 @@ npm run build:prod   # 生产构建
   - 默认账号 `root` / 密码 `password` 为脚手架占位值，**部署前务必修改**；该文件已纳入版本管理，请勿在其中提交真实生产凭据。
 - `token.secret` 为默认占位密钥，生产环境请替换。
 - 前端环境变量：`Frontend/.env.development`、`.env.production`、`.env.staging`
+- 已执行过旧版 `wechat.sql` 的数据库需要执行一次 `Backend/sql/wechat-insights.sql`，
+  增加好感度、认识日期及消息洞察字段；全新安装直接执行最新的 `Backend/sql/wechat.sql`。
 
 ## 版本管理
 

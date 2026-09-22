@@ -36,7 +36,9 @@ class WeChatSessionTest
     private static final String[] PERSISTED_PROPERTIES = {
             "sessionId", "userId", "chatUsername", "displayName", "isGroup",
             "selfUsername", "selfLabels", "targetLabels", "identityConfirmed",
-            "msgCount", "unanalyzedCount", "syncedUntil", "lastSyncTime", "delFlag"
+            "msgCount", "unanalyzedCount", "syncedUntil", "lastSyncTime",
+            "affinityScore", "acquaintanceDate", "myPerformanceScore",
+            "nextStepSuggestion", "delFlag"
     };
 
     @Test

@@ -23,6 +23,7 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.wechat.datasource.ChatSession;
 import com.ruoyi.wechat.datasource.SourceStatus;
+import com.ruoyi.wechat.domain.AcquaintanceDateRequest;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.IdentityConfirmRequest;
 import com.ruoyi.wechat.domain.SessionRenameRequest;
@@ -210,6 +211,22 @@ public class WechatChatController extends BaseController
     }
 
     /**
+     * 设置或清除会话的认识日期。
+     *
+     * <p>接口现在就返回 acquaintanceDays。好感度、我的发挥和下一步建议同样是
+     * 响应字段，当前为空，后续模型实现只需填充字段而不用再改前端协议。
+     */
+    @PreAuthorize("@ss.hasPermi('wechat:identity:edit')")
+    @Log(title = "微信认识日期", businessType = BusinessType.UPDATE)
+    @PostMapping("/session/acquaintance-date")
+    public AjaxResult updateAcquaintanceDate(@RequestBody AcquaintanceDateRequest request)
+    {
+        SessionView view = archiveService.updateAcquaintanceDate(getUserId(), request.getSessionId(),
+                request.getAcquaintanceDate(), getUsername());
+        return AjaxResult.success(view);
+    }
+
+    /**
      * 确认说话人映射，并回写历史消息的角色。
      */
     @PreAuthorize("@ss.hasPermi('wechat:identity:edit')")
@@ -289,6 +306,11 @@ public class WechatChatController extends BaseController
         item.put("lastTime", s.lastTime());
         item.put("lastMessage", s.lastMessage());
         item.put("lastSyncTime", s.lastSyncTime());
+        item.put("affinityScore", s.affinityScore());
+        item.put("acquaintanceDate", s.acquaintanceDate());
+        item.put("acquaintanceDays", s.acquaintanceDays());
+        item.put("myPerformanceScore", s.myPerformanceScore());
+        item.put("nextStepSuggestion", s.nextStepSuggestion());
         item.put("archived", true);
         return item;
     }
@@ -309,6 +331,11 @@ public class WechatChatController extends BaseController
         item.put("lastTime", c.lastTime());
         item.put("lastMessage", c.lastMessage());
         item.put("lastSyncTime", null);
+        item.put("affinityScore", null);
+        item.put("acquaintanceDate", null);
+        item.put("acquaintanceDays", null);
+        item.put("myPerformanceScore", null);
+        item.put("nextStepSuggestion", null);
         item.put("archived", false);
         return item;
     }

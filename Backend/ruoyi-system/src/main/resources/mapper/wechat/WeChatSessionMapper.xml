@@ -18,6 +18,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="unanalyzedCount"   column="unanalyzed_count"   />
         <result property="syncedUntil"       column="synced_until"       />
         <result property="lastSyncTime"      column="last_sync_time"     />
+        <result property="affinityScore"     column="affinity_score"     />
+        <result property="acquaintanceDate"  column="acquaintance_date"  />
+        <result property="myPerformanceScore" column="my_performance_score" />
+        <result property="nextStepSuggestion" column="next_step_suggestion" />
         <result property="delFlag"           column="del_flag"           />
         <result property="createBy"          column="create_by"          />
         <result property="createTime"        column="create_time"        />
@@ -29,7 +33,8 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <sql id="selectSessionVo">
         select session_id, user_id, chat_username, display_name, is_group, self_username,
                self_labels, target_labels, identity_confirmed, msg_count, unanalyzed_count,
-               synced_until, last_sync_time, del_flag, create_by, create_time,
+               synced_until, last_sync_time, affinity_score, acquaintance_date,
+               my_performance_score, next_step_suggestion, del_flag, create_by, create_time,
                update_by, update_time, remark
         from sys_wechat_session
     </sql>
@@ -60,11 +65,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         insert into sys_wechat_session (
             user_id, chat_username, display_name, is_group, self_username, self_labels,
             target_labels, identity_confirmed, msg_count, unanalyzed_count, synced_until,
-            last_sync_time, del_flag, create_by, create_time, remark
+            last_sync_time, affinity_score, acquaintance_date, my_performance_score,
+            next_step_suggestion, del_flag, create_by, create_time, remark
         ) values (
             #{userId}, #{chatUsername}, #{displayName}, #{isGroup}, #{selfUsername}, #{selfLabels},
             #{targetLabels}, #{identityConfirmed}, #{msgCount}, #{unanalyzedCount}, #{syncedUntil},
-            #{lastSyncTime}, '0', #{createBy}, sysdate(), #{remark}
+            #{lastSyncTime}, #{affinityScore}, #{acquaintanceDate}, #{myPerformanceScore},
+            #{nextStepSuggestion}, '0', #{createBy}, sysdate(), #{remark}
         )
     </insert>
 
@@ -79,6 +86,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="identityConfirmed != null">identity_confirmed = #{identityConfirmed},</if>
             <if test="syncedUntil != null">synced_until = #{syncedUntil},</if>
             <if test="lastSyncTime != null">last_sync_time = #{lastSyncTime},</if>
+            <if test="affinityScore != null">affinity_score = #{affinityScore},</if>
+            <if test="acquaintanceDate != null">acquaintance_date = #{acquaintanceDate},</if>
+            <if test="myPerformanceScore != null">my_performance_score = #{myPerformanceScore},</if>
+            <if test="nextStepSuggestion != null">next_step_suggestion = #{nextStepSuggestion},</if>
             <if test="updateBy != null">update_by = #{updateBy},</if>
             <if test="remark != null">remark = #{remark},</if>
             update_time = sysdate()

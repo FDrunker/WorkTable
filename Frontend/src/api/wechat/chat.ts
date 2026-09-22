@@ -1,6 +1,7 @@
 import request from '@/utils/request'
 import type {
   AjaxResult,
+  WechatAcquaintanceDateRequest,
   WechatAnalysis,
   WechatChatDetail,
   WechatSessionView,
@@ -71,6 +72,17 @@ export function renameWechatSession(data: {
 }): Promise<AjaxResult<WechatSessionView>> {
   return request({
     url: '/wechat/session/rename',
+    method: 'post',
+    data
+  })
+}
+
+/** 设置或清除会话认识日期 */
+export function updateWechatAcquaintanceDate(
+  data: WechatAcquaintanceDateRequest
+): Promise<AjaxResult<WechatSessionView>> {
+  return request({
+    url: '/wechat/session/acquaintance-date',
     method: 'post',
     data
   })

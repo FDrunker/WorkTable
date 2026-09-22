@@ -1,5 +1,6 @@
 package com.ruoyi.wechat.domain;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 import com.ruoyi.common.core.domain.BaseEntity;
@@ -55,6 +56,24 @@ public class WeChatMessage extends BaseEntity
 
     /** 首次参与的分析ID */
     private Long analysisId;
+
+    /** 对方消息情绪标签 */
+    private String emotionTag;
+
+    /** 情绪标签百分比 */
+    private BigDecimal emotionPercent;
+
+    /** 对方消息意图标签 */
+    private String intentTag;
+
+    /** 意图标签百分比 */
+    private BigDecimal intentPercent;
+
+    /** 我方回答评级 */
+    private String replyRating;
+
+    /** 我方回答得分 */
+    private BigDecimal replyScore;
 
     /** 删除标志 */
     private String delFlag;
@@ -187,6 +206,66 @@ public class WeChatMessage extends BaseEntity
     public void setAnalysisId(Long analysisId)
     {
         this.analysisId = analysisId;
+    }
+
+    public String getEmotionTag()
+    {
+        return emotionTag;
+    }
+
+    public void setEmotionTag(String emotionTag)
+    {
+        this.emotionTag = emotionTag;
+    }
+
+    public BigDecimal getEmotionPercent()
+    {
+        return emotionPercent;
+    }
+
+    public void setEmotionPercent(BigDecimal emotionPercent)
+    {
+        this.emotionPercent = emotionPercent;
+    }
+
+    public String getIntentTag()
+    {
+        return intentTag;
+    }
+
+    public void setIntentTag(String intentTag)
+    {
+        this.intentTag = intentTag;
+    }
+
+    public BigDecimal getIntentPercent()
+    {
+        return intentPercent;
+    }
+
+    public void setIntentPercent(BigDecimal intentPercent)
+    {
+        this.intentPercent = intentPercent;
+    }
+
+    public String getReplyRating()
+    {
+        return replyRating;
+    }
+
+    public void setReplyRating(String replyRating)
+    {
+        this.replyRating = replyRating;
+    }
+
+    public BigDecimal getReplyScore()
+    {
+        return replyScore;
+    }
+
+    public void setReplyScore(BigDecimal replyScore)
+    {
+        this.replyScore = replyScore;
     }
 
     public String getDelFlag()
