@@ -90,6 +90,22 @@ class TextWechatDataSourceTest
     }
 
     @Test
+    @DisplayName("确认导入：可以选择已有会话作为归档目标")
+    void shouldCommitToSelectedSession()
+    {
+        TextImportPreview preview = source.preview(1L, CHAT);
+        ChatSession selected = new ChatSession("text:existing", "小美（同事）", true, 0,
+                null, null, null);
+
+        TextWechatDataSource.CommitResult result = source.commit(1L, preview.importId(), "我", selected);
+
+        assertEquals("text:existing", result.session().username());
+        assertEquals("小美（同事）", result.session().displayName());
+        assertTrue(result.session().group());
+        assertEquals(2, source.fetchMessages(FetchQuery.of("text:existing", 10)).size());
+    }
+
+    @Test
     @DisplayName("消息按文本日期升序排列，而不是按粘贴顺序")
     void shouldSortMessagesByDate()
     {

@@ -100,6 +100,16 @@ public class TextWechatDataSource implements WechatDataSource
      */
     public CommitResult commit(Long userId, String importId, String selfLabel)
     {
+        return commit(userId, importId, selfLabel, null);
+    }
+
+    /**
+     * 确认“我”的昵称并生成归档会话。
+     *
+     * <p>{@code targetSession} 为空时按对方昵称新建；不为空时复用用户选择的已有会话。
+     */
+    public CommitResult commit(Long userId, String importId, String selfLabel, ChatSession targetSession)
+    {
         if (importId == null || importId.isBlank())
         {
             throw new IllegalArgumentException("导入标识不能为空");
@@ -136,9 +146,15 @@ public class TextWechatDataSource implements WechatDataSource
             throw new IllegalArgumentException("聊天记录里没有识别到对方昵称");
         }
 
-        String displayName = truncate(String.join("、", targetLabels), NAME_MAX_LENGTH);
-        String username = usernameForDisplayName(displayName);
-        boolean group = counts.size() > 2;
+        boolean existingSession = targetSession != null;
+        String displayName = existingSession ? targetSession.displayName()
+                : truncate(String.join("、", targetLabels), NAME_MAX_LENGTH);
+        String username = existingSession ? targetSession.username() : usernameForDisplayName(displayName);
+        boolean group = existingSession ? targetSession.group() : counts.size() > 2;
+        if (username == null || username.isBlank() || displayName == null || displayName.isBlank())
+        {
+            throw new IllegalArgumentException("目标会话信息不完整");
+        }
         RawMessage last = buffer.messages().get(buffer.messages().size() - 1);
         ChatSession session = new ChatSession(username, displayName, group, 0,
                 truncate(last.content(), 40), last.time(), null);

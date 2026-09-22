@@ -8,15 +8,16 @@ import com.ruoyi.wechat.datasource.WechatDataSourceException;
 import com.ruoyi.wechat.datasource.text.TextWechatDataSource;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.TextImportPreview;
+import com.ruoyi.wechat.domain.WeChatSession;
 
 /**
- * 文本导入服务 —— 先解析预览并让用户确认“我是谁”，再归档到对方昵称对应的会话。
+ * 文本导入服务 —— 先解析预览并让用户确认“我是谁”，再归档到已有会话或按对方昵称新建。
  *
  * <p>数据来源已改为"读取文本"，因此这是聊天分析功能的主入口：
  * <ol>
  *   <li>预览阶段解析文本并把发送者候选返回前端；</li>
- *   <li>确认阶段按“除自己外的昵称”生成稳定会话标识，再走归档服务原有的
- *       {@code openChat} 路径落库；</li>
+ *   <li>确认阶段可指定已有会话；未指定时按“除自己外的昵称”生成稳定会话标识，
+ *       再走归档服务原有的 {@code openChat} 路径落库；</li>
  *   <li>确认映射后回写消息角色，并把对方昵称保存为会话名称。</li>
  * </ol>
  *
@@ -61,14 +62,30 @@ public class WechatTextImportService
      */
     public ChatDetail commitText(Long userId, String importId, String selfLabel, String operator)
     {
+        return commitText(userId, importId, selfLabel, null, operator);
+    }
+
+    /**
+     * 用户选择自己的昵称后，把预览文本归档到指定会话或按对方昵称新建会话。
+     */
+    public ChatDetail commitText(Long userId, String importId, String selfLabel, Long targetSessionId,
+            String operator)
+    {
         TextWechatDataSource source = requireTextSource();
 
-        TextWechatDataSource.CommitResult committed = source.commit(userId, importId, selfLabel);
+        WeChatSession targetSession = targetSessionId == null ? null
+                : archiveService.getSession(userId, targetSessionId);
+        ChatSession target = targetSession == null ? null
+                : new ChatSession(targetSession.getChatUsername(), targetSession.getDisplayName(),
+                        targetSession.groupChat(), 0, null, null, null);
+        TextWechatDataSource.CommitResult committed = source.commit(userId, importId, selfLabel, target);
         ChatSession session = committed.session();
-        ChatDetail detail = archiveService.openChat(userId, null, session.username(), session.displayName(),
+        Long destinationSessionId = targetSession == null ? null : targetSession.getSessionId();
+        ChatDetail detail = archiveService.openChat(userId, destinationSessionId,
+                destinationSessionId == null ? session.username() : null, session.displayName(),
                 session.group(), 0, IMPORT_PAGE_SIZE, true, operator);
         archiveService.confirmIdentity(userId, detail.session().sessionId(), session.username(),
-                committed.selfLabels(), committed.targetLabels(), operator);
+                committed.selfLabels(), committed.targetLabels(), destinationSessionId == null, operator);
         return archiveService.openChat(userId, detail.session().sessionId(), null, null,
                 session.group(), 0, IMPORT_PAGE_SIZE, false, operator);
     }

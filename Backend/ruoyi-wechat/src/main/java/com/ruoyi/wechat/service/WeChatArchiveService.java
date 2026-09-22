@@ -204,7 +204,7 @@ public class WeChatArchiveService
         if (!session.identityConfirmed() && identity.autoDetected())
         {
             updateIdentity(session, identity.selfUsername(), identity.selfLabels(),
-                    identity.targetLabels(), false, operator);
+                    identity.targetLabels(), false, false, operator);
         }
 
         String latestTime = cleaned.messages().isEmpty() ? session.getSyncedUntil()
@@ -251,8 +251,18 @@ public class WeChatArchiveService
     public SessionView confirmIdentity(Long userId, Long sessionId, String selfUsername,
             List<String> selfLabels, List<String> targetLabels, String operator)
     {
+        return confirmIdentity(userId, sessionId, selfUsername, selfLabels, targetLabels, true, operator);
+    }
+
+    /**
+     * 确认说话人映射；可按需决定是否用对方昵称覆盖会话名。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public SessionView confirmIdentity(Long userId, Long sessionId, String selfUsername,
+            List<String> selfLabels, List<String> targetLabels, boolean renameSession, String operator)
+    {
         WeChatSession session = requireSession(userId, sessionId);
-        updateIdentity(session, selfUsername, selfLabels, targetLabels, true, operator);
+        updateIdentity(session, selfUsername, selfLabels, targetLabels, true, renameSession, operator);
 
         // 先清掉旧映射结果，再按新映射回写，避免改映射后残留错误的角色
         messageMapper.updateSenderRoleByLabel(sessionId, null, "UNKNOWN");
@@ -320,6 +330,14 @@ public class WeChatArchiveService
     }
 
     /**
+     * 读取属于当前用户的会话，供文本导入定位到已有会话。
+     */
+    public WeChatSession getSession(Long userId, Long sessionId)
+    {
+        return requireSession(userId, sessionId);
+    }
+
+    /**
      * 由标签集合构造映射；已确认的映射优先。
      */
     private ChatIdentity buildIdentity(WeChatSession session)
@@ -335,7 +353,7 @@ public class WeChatArchiveService
     }
 
     private void updateIdentity(WeChatSession session, String selfUsername, List<String> selfLabels,
-            List<String> targetLabels, boolean confirmed, String operator)
+            List<String> targetLabels, boolean confirmed, boolean renameSession, String operator)
     {
         WeChatSession update = new WeChatSession();
         update.setSessionId(session.getSessionId());
@@ -343,7 +361,7 @@ public class WeChatArchiveService
         update.setSelfLabels(WeChatSession.joinLabels(selfLabels));
         update.setTargetLabels(WeChatSession.joinLabels(targetLabels));
         update.setIdentityConfirmed(confirmed ? "1" : "0");
-        if (confirmed)
+        if (confirmed && renameSession)
         {
             update.setDisplayName(conversationName(targetLabels));
         }

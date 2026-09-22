@@ -175,6 +175,21 @@ class WeChatArchiveServiceTest
     }
 
     @Test
+    @DisplayName("确认映射：导入已有会话时不覆盖原会话名")
+    void shouldPreserveNameWhenConfirmingExistingSession()
+    {
+        stored.setDisplayName("小美（同事）");
+
+        SessionView view = service.confirmIdentity(USER_ID, SESSION_ID, "text:target",
+                List.of("我"), List.of("小美"), false, "admin");
+
+        assertEquals("小美（同事）", view.displayName());
+        assertEquals("小美（同事）", stored.getDisplayName());
+        assertEquals("我", stored.getSelfLabels());
+        assertEquals("小美", stored.getTargetLabels());
+    }
+
+    @Test
     @DisplayName("删除会话：会话、消息与历史分析记录一起逻辑删除")
     void shouldDeleteSessionData()
     {

@@ -59,7 +59,7 @@ export function previewWechatText(
   })
 }
 
-/** 确认自己的昵称并归档到对方昵称对应的会话 */
+/** 确认自己的昵称，并归档到已有会话或按对方昵称新建会话 */
 export function commitWechatText(
   data: WechatTextImportCommitRequest
 ): Promise<AjaxResult<WechatChatDetail>> {

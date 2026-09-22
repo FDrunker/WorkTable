@@ -239,10 +239,10 @@
         type="info"
         :closable="false"
         show-icon
-        title="选择后，其他昵称会成为会话名称，本次记录会追加到对应会话。"
+        title="选择自己的昵称；选择已有会话时追加归档，不选择则新建会话。"
         class="dlg-alert"
       />
-      <el-form label-width="80px">
+      <el-form label-width="88px">
         <el-form-item label="我的昵称">
           <el-select v-model="identityForm.selfLabel" placeholder="请选择" class="full-width">
             <el-option
@@ -253,7 +253,29 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item v-if="targetLabelPreview" label="会话名称">
+        <el-form-item label="选择会话">
+          <el-select
+            v-model="identityForm.sessionId"
+            clearable
+            placeholder="不选择则新建会话"
+            class="full-width"
+          >
+            <el-option
+              v-for="session in importableSessions"
+              :key="session.sessionId"
+              :label="session.displayName"
+              :value="session.sessionId"
+            >
+              <div class="conversation-option">
+                <span class="conversation-option-name">{{ session.displayName }}</span>
+                <span class="conversation-option-meta">
+                  {{ session.msgCount }} 条{{ session.lastTime ? ' · ' + shortTime(session.lastTime) : '' }}
+                </span>
+              </div>
+            </el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item v-if="!identityForm.sessionId && targetLabelPreview" label="新会话名称">
           <span class="conversation-preview">{{ targetLabelPreview }}</span>
         </el-form-item>
       </el-form>
@@ -347,8 +369,9 @@ const importHint = computed(() =>
 
 const messageListRef = ref<HTMLElement | null>(null)
 
-const identityForm = reactive<{ selfLabel: string }>({
-  selfLabel: ''
+const identityForm = reactive<{ selfLabel: string; sessionId: number | null }>({
+  selfLabel: '',
+  sessionId: null
 })
 
 /**
@@ -367,6 +390,13 @@ const filteredSessions = computed<WechatSessionView[]>(() => {
   }
   return sessions.value.filter((s: WechatSessionView) => (s.displayName || '').toLowerCase().includes(kw))
 })
+
+const importableSessions = computed(() =>
+  sessions.value.filter(
+    (session: WechatSessionView): session is WechatSessionView & { sessionId: number } =>
+      session.sessionId !== null
+  )
+)
 
 /** 自己那一侧的昵称，用于气泡头像 */
 const selfLabel = computed(() => {
@@ -504,6 +534,7 @@ async function confirmImport() {
     pendingImport.value = preview
     const hint = preview.senders.find((sender) => ['me', '我', '自己'].includes(sender.label.trim().toLowerCase()))
     identityForm.selfLabel = hint?.label || ''
+    identityForm.sessionId = null
     importDialog.value = false
     identityDialog.value = true
   } catch (e: any) {
@@ -599,7 +630,8 @@ async function saveIdentity() {
   try {
     const res = await commitWechatText({
       importId: preview.importId,
-      selfLabel: identityForm.selfLabel
+      selfLabel: identityForm.selfLabel,
+      sessionId: identityForm.sessionId
     })
     const detail = res.data
     if (!detail) {
@@ -609,6 +641,7 @@ async function saveIdentity() {
     identityDialog.value = false
     pendingImport.value = null
     identityForm.selfLabel = ''
+    identityForm.sessionId = null
     await applyDetail(detail)
     ElMessage.success(`已导入 ${detail.total} 条消息`)
   } catch (e: any) {
@@ -622,6 +655,7 @@ function cancelIdentity() {
   identityDialog.value = false
   pendingImport.value = null
   identityForm.selfLabel = ''
+  identityForm.sessionId = null
 }
 
 async function removeSession(item: WechatSessionView) {
@@ -1211,6 +1245,26 @@ $wechat-border: #d9d9d9;
 .conversation-preview {
   color: #303133;
   font-weight: 600;
+}
+
+.conversation-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.conversation-option-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversation-option-meta {
+  flex: 0 0 auto;
+  color: #909399;
+  font-size: 12px;
 }
 
 .full-width {

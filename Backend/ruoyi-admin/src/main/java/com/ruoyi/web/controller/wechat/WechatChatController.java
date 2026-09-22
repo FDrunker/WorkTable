@@ -154,7 +154,7 @@ public class WechatChatController extends BaseController
     public AjaxResult commitText(@RequestBody TextImportCommitRequest request)
     {
         ChatDetail detail = textImportService.commitText(getUserId(), request.getImportId(),
-                request.getSelfLabel(), getUsername());
+                request.getSelfLabel(), request.getSessionId(), getUsername());
         return AjaxResult.success(detail);
     }
 

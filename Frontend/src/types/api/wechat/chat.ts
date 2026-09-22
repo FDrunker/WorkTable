@@ -115,6 +115,8 @@ export interface WechatTextImportPreview {
 export interface WechatTextImportCommitRequest {
   importId: string
   selfLabel: string
+  /** 已有会话ID；为空时按对方昵称新建会话 */
+  sessionId?: number | null
 }
 
 /** 设置会话认识日期；日期为空表示清除 */

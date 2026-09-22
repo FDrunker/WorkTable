@@ -19,6 +19,7 @@ import com.ruoyi.wechat.datasource.text.TextWechatDataSource;
 import com.ruoyi.wechat.domain.ChatDetail;
 import com.ruoyi.wechat.domain.SessionView;
 import com.ruoyi.wechat.domain.TextImportPreview;
+import com.ruoyi.wechat.domain.WeChatSession;
 
 /**
  * {@link WechatTextImportService} 的预览与确认流程测试。
@@ -65,10 +66,29 @@ class WechatTextImportServiceTest
         assertEquals(2, archiveService.openCount);
         assertEquals("小美", archiveService.firstDisplayName);
         assertTrue(archiveService.firstSync);
+        assertTrue(archiveService.confirmRename);
         assertEquals(9L, archiveService.confirmedSessionId);
         assertEquals(List.of("我"), archiveService.confirmedSelfLabels);
         assertEquals(List.of("小美"), archiveService.confirmedTargetLabels);
         assertEquals(9L, detail.session().sessionId());
+    }
+
+    @Test
+    @DisplayName("确认：选择已有会话时归档到该会话且不覆盖原名称")
+    void shouldCommitToSelectedSession()
+    {
+        TextWechatDataSource source = new TextWechatDataSource();
+        WechatTextImportService service = new WechatTextImportService(provider(source),
+                archiveService, new WechatStatusService(new MockWechatDataSource()));
+        TextImportPreview preview = service.previewText(1L, TEXT);
+
+        service.commitText(1L, preview.importId(), "我", 42L, "admin");
+
+        assertEquals(42L, archiveService.selectedSessionId);
+        assertEquals(42L, archiveService.firstSessionId);
+        assertEquals("小美（同事）", archiveService.firstDisplayName);
+        assertFalse(archiveService.confirmRename);
+        assertEquals(42L, archiveService.confirmedSessionId);
     }
 
     @Test
@@ -117,9 +137,17 @@ class WechatTextImportServiceTest
 
         private String firstDisplayName;
 
+        private String firstChatUsername;
+
+        private Long firstSessionId;
+
         private boolean firstSync;
 
+        private Long selectedSessionId;
+
         private Long confirmedSessionId;
+
+        private boolean confirmRename;
 
         private List<String> confirmedSelfLabels;
 
@@ -138,26 +166,45 @@ class WechatTextImportServiceTest
             openCount++;
             if (openCount == 1)
             {
+                firstSessionId = sessionId;
                 firstDisplayName = displayName;
+                firstChatUsername = chatUsername;
                 firstSync = sync;
             }
-            return new ChatDetail(sessionView(), List.of(), 0, offset, limit);
+            Long resultSessionId = sessionId == null ? 9L : sessionId;
+            return new ChatDetail(sessionView(resultSessionId), List.of(), 0, offset, limit);
+        }
+
+        @Override
+        public WeChatSession getSession(Long userId, Long sessionId)
+        {
+            selectedSessionId = sessionId;
+            WeChatSession session = new WeChatSession();
+            session.setSessionId(sessionId);
+            session.setUserId(userId);
+            session.setChatUsername("text:existing");
+            session.setDisplayName("小美（同事）");
+            session.setIsGroup("0");
+            return session;
         }
 
         @Override
         public SessionView confirmIdentity(Long userId, Long sessionId, String selfUsername,
-                List<String> selfLabels, List<String> targetLabels, String operator)
+                List<String> selfLabels, List<String> targetLabels, boolean renameSession, String operator)
         {
             called = true;
             confirmedSessionId = sessionId;
             confirmedSelfLabels = selfLabels;
             confirmedTargetLabels = targetLabels;
-            return sessionView();
+            confirmRename = renameSession;
+            return sessionView(sessionId);
         }
 
-        private static SessionView sessionView()
+        private static SessionView sessionView(Long sessionId)
         {
-            return new SessionView(9L, "text:target", "小美", false, true,
+            String username = sessionId == 42L ? "text:existing" : "text:target";
+            String displayName = sessionId == 42L ? "小美（同事）" : "小美";
+            return new SessionView(sessionId, username, displayName, false, true,
                     List.of("我"), List.of("小美"), 2, 0, 0,
                     "2026-04-01 19:03", "在的", null,
                     new BigDecimal("50.00"), null, null, null, null);

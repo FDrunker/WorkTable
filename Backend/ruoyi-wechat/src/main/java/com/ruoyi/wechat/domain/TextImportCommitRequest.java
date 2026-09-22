@@ -11,6 +11,9 @@ public class TextImportCommitRequest
     /** 用户在本次文本中选择的自己的昵称 */
     private String selfLabel;
 
+    /** 可选的已有会话ID；为空时按对方昵称新建会话 */
+    private Long sessionId;
+
     public String getImportId()
     {
         return importId;
@@ -29,5 +32,15 @@ public class TextImportCommitRequest
     public void setSelfLabel(String selfLabel)
     {
         this.selfLabel = selfLabel;
+    }
+
+    public Long getSessionId()
+    {
+        return sessionId;
+    }
+
+    public void setSessionId(Long sessionId)
+    {
+        this.sessionId = sessionId;
     }
 }
