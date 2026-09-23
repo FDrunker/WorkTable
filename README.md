@@ -13,11 +13,13 @@ WorkTable/
 │   ├── ruoyi-system/            # 系统业务模块：用户 / 角色 / 菜单 / 字典 / 公告
 │   ├── ruoyi-quartz/            # 定时任务
 │   ├── ruoyi-generator/         # 代码生成器（Velocity 模板）
+│   ├── ruoyi-wechat/            # 微信聊天归档（恋爱军师）
+│   ├── ruoyi-knowledge/         # Chroma 集合、文档任务与 AI 模型配置
 │   ├── sql/                     # 数据库脚本：ry_*.sql、quartz.sql
 │   └── pom.xml                  # 聚合父 POM（groupId: com.ruoyi, version: 3.9.2）
 └── Frontend/                    # 前端：Vue 3 + Vite + Element Plus
     ├── src/api/                 # 接口封装
-    ├── src/views/               # 页面：system / monitor / tool
+    ├── src/views/               # 页面：system / monitor / tool / wechat / knowledge
     ├── src/router/              # 路由
     ├── src/store/               # Pinia 状态管理
     ├── src/layout/              # 布局与导航
@@ -52,6 +54,7 @@ WorkTable/
 - MySQL 8（执行 `Backend/sql/ry_20260417.sql`、`Backend/sql/quartz.sql`）
 - Redis（默认 `localhost:6379`）
 - Node.js 18+ 与 npm
+- Chroma 服务地址及集合的 embedding function 由外部 Chroma 部署负责
 
 ### 2. 后端
 
@@ -81,6 +84,38 @@ npm run build:prod   # 生产构建
 ```
 
 开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8090`（见 `vite.config.ts`）。
+
+## 知识库与模型管理（ruoyi-knowledge）
+
+- **入口**：一级菜单「知识库管理」，包含「向量集合」和「模型管理」。
+- **集合管理**：仅展示和管理 Chroma 中已经存在的集合，不提供新建、重命名或删除集合接口。列表展示名称、集合 ID 和文档数。
+- **文档管理**：支持上传 `.md` 文件或直接粘贴 Markdown；分隔符、块大小和重叠长度均可配置，默认值分别为 `\n`、`1024`、`100`。
+- **向量生成**：添加或修改文档时可以选择启用的 embedding 模型。如果未选择模型，只向 Chroma 提交 `ids`、`documents` 和 metadata，由集合自身的 embedding function 处理。
+- **逻辑文档**：同一份 Markdown 会切成多个 Chroma 记录，切片 metadata 包含 `documentId`、`documentName`、`chunkIndex` 等字段。编辑文档会删除该 `documentId` 的旧切片并重建；删除会移除该逻辑文档及其全部切片。
+- **已有数据**：没有 `documentId` metadata 的 Chroma 记录会作为“已有数据”展示，可以查看内容、修改、删除或重新向量化；修改后会纳入本系统管理。
+- **任务**：导入、修改和重新向量化均异步执行，任务、进度、取消标记和历史记录持久化到 MySQL。服务重启时运行中的任务会标记为失败，可手动重试。
+- **模型管理**：支持 OpenAI / ChatGPT、DeepSeek、Ollama，以及 TypeSafe Jev 自定义适配器。模型具有 `embedding`、`chat`、`system-one` 类型、启用状态、默认标记和连通性测试结果。
+- **密钥安全**：API Key 使用 AES-GCM 加密后存入数据库，查询接口只返回掩码。主密钥配置为 `knowledge.encryption-key`，生产环境应通过 `WORKTABLE_KNOWLEDGE_KEY` 环境变量覆盖。
+- **本地文件**：上传的 Markdown 先写入 `knowledge.storage-path`，成功写入 Chroma 后删除暂存文件；原文正文保存在 MySQL 中，供后续编辑和重建使用。
+
+首次启用该模块需要执行：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/ai-knowledge.sql
+```
+
+默认 Chroma 配置为：
+
+```yaml
+knowledge:
+  storage-path: D:/ruoyi/uploadPath/knowledge
+  encryption-key: ${WORKTABLE_KNOWLEDGE_KEY:生产环境必须覆盖}
+  task-threads: 4
+  chroma:
+    base-url: http://localhost:8000
+    tenant: default_tenant
+    database: default_database
+```
 
 ## 模块裁剪记录
 

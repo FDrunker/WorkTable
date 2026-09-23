@@ -28,3 +28,7 @@ export * from "./tool/gen";
 
 // 微信聊天分析模块
 export * from "./wechat/chat";
+
+// 知识库与模型管理模块
+export * from "./knowledge/collection";
+export * from "./knowledge/model";

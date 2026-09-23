@@ -175,5 +175,17 @@ wechat:
     # 前端聊天记录每页条数
     message-page-size: 50
 
+# 知识库与模型管理
+knowledge:
+  # Markdown 暂存目录；写入 Chroma 成功后会删除暂存文件
+  storage-path: D:/ruoyi/uploadPath/knowledge
+  # AES-GCM 主密钥，必须是 Base64 编码的 32 字节密钥。生产环境请通过环境变量覆盖。
+  encryption-key: ${WORKTABLE_KNOWLEDGE_KEY:0rRoJPJP7TmDqHquCC6PW3ytNd7l93zAkkIPSNV83xc=}
+  task-threads: 4
+  chroma:
+    base-url: http://localhost:8000
+    tenant: default_tenant
+    database: default_database
+
 # 说明：调用 agent（LLM 客户端、军师知识库）的能力已从本模块移除。
 # 如需接入，请另行实现，并在此处补充对应配置。

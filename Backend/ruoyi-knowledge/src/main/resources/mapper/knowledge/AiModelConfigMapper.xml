@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.knowledge.mapper.AiModelConfigMapper">
+
+    <resultMap type="com.ruoyi.knowledge.domain.AiModelConfig" id="AiModelConfigResult">
+        <id property="modelId" column="model_id" />
+        <result property="modelName" column="model_name" />
+        <result property="provider" column="provider" />
+        <result property="modelType" column="model_type" />
+        <result property="modelCode" column="model_code" />
+        <result property="baseUrl" column="base_url" />
+        <result property="apiKeyCipher" column="api_key_cipher" />
+        <result property="enabled" column="enabled" />
+        <result property="isDefault" column="is_default" />
+        <result property="extraConfig" column="extra_config" />
+        <result property="lastTestStatus" column="last_test_status" />
+        <result property="lastTestMessage" column="last_test_message" />
+        <result property="lastTestTime" column="last_test_time" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <sql id="selectModelVo">
+        select model_id, model_name, provider, model_type, model_code, base_url,
+               api_key_cipher, enabled, is_default, extra_config, last_test_status,
+               last_test_message, last_test_time, create_by, create_time,
+               update_by, update_time, remark
+        from ai_model_config
+    </sql>
+
+    <select id="selectModelList" parameterType="com.ruoyi.knowledge.domain.AiModelConfig"
+            resultMap="AiModelConfigResult">
+        <include refid="selectModelVo"/>
+        <where>
+            <if test="modelName != null and modelName != ''">
+                and model_name like concat('%', #{modelName}, '%')
+            </if>
+            <if test="provider != null and provider != ''">
+                and provider = #{provider}
+            </if>
+            <if test="modelType != null and modelType != ''">
+                and model_type = #{modelType}
+            </if>
+            <if test="enabled != null and enabled != ''">
+                and enabled = #{enabled}
+            </if>
+        </where>
+        order by is_default desc, model_type asc, model_id desc
+    </select>
+
+    <select id="selectEnabledModels" resultMap="AiModelConfigResult">
+        <include refid="selectModelVo"/>
+        where enabled = '1'
+        <if test="modelType != null and modelType != ''">
+            and model_type = #{modelType}
+        </if>
+        order by is_default desc, model_id desc
+    </select>
+
+    <select id="selectModelById" resultMap="AiModelConfigResult">
+        <include refid="selectModelVo"/>
+        where model_id = #{modelId}
+    </select>
+
+    <insert id="insertModel" parameterType="com.ruoyi.knowledge.domain.AiModelConfig"
+            useGeneratedKeys="true" keyProperty="modelId">
+        insert into ai_model_config (
+            model_name, provider, model_type, model_code, base_url, api_key_cipher,
+            enabled, is_default, extra_config, create_by, create_time, remark
+        ) values (
+            #{modelName}, #{provider}, #{modelType}, #{modelCode}, #{baseUrl}, #{apiKeyCipher},
+            #{enabled}, #{isDefault}, #{extraConfig}, #{createBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateModel" parameterType="com.ruoyi.knowledge.domain.AiModelConfig">
+        update ai_model_config
+        <set>
+            <if test="modelName != null">model_name = #{modelName},</if>
+            <if test="provider != null">provider = #{provider},</if>
+            <if test="modelType != null">model_type = #{modelType},</if>
+            <if test="modelCode != null">model_code = #{modelCode},</if>
+            <if test="baseUrl != null">base_url = #{baseUrl},</if>
+            <if test="apiKeyCipher != null">api_key_cipher = #{apiKeyCipher},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+            <if test="extraConfig != null">extra_config = #{extraConfig},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = sysdate()
+        </set>
+        where model_id = #{modelId}
+    </update>
+
+    <delete id="deleteModels">
+        delete from ai_model_config where model_id in
+        <foreach item="modelId" collection="modelIds" open="(" separator="," close=")">
+            #{modelId}
+        </foreach>
+    </delete>
+
+    <update id="clearDefault">
+        update ai_model_config
+        set is_default = '0', update_time = sysdate()
+        where model_type = #{modelType}
+          and is_default = '1'
+        <if test="exceptModelId != null">
+            and model_id != #{exceptModelId}
+        </if>
+    </update>
+
+    <update id="updateTestResult" parameterType="com.ruoyi.knowledge.domain.AiModelConfig">
+        update ai_model_config
+        set last_test_status = #{lastTestStatus},
+            last_test_message = #{lastTestMessage},
+            last_test_time = sysdate()
+        where model_id = #{modelId}
+    </update>
+
+</mapper>
