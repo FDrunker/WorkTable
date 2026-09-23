@@ -275,8 +275,8 @@
         <el-form-item label="文档名称" prop="documentName">
           <el-input v-model="documentForm.documentName" placeholder="请输入文档名称" />
         </el-form-item>
-        <el-form-item label="Embedding">
-          <el-select v-model="documentForm.modelId" clearable placeholder="不选择则交由 Chroma 处理" style="width: 100%">
+        <el-form-item label="Embedding" prop="modelId">
+          <el-select v-model="documentForm.modelId" clearable placeholder="请选择 Embedding 模型" style="width: 100%">
             <el-option
               v-for="item in embeddingModels"
               :key="item.modelId"
@@ -434,6 +434,7 @@ const documentForm = reactive({
 
 const documentRules = {
   documentName: [{ required: true, message: '文档名称不能为空', trigger: 'blur' }],
+  modelId: [{ required: true, message: '请选择 Embedding 模型', trigger: 'change' }],
   separator: [{ required: true, message: '分隔符不能为空', trigger: 'blur' }],
   chunkSize: [{ required: true, message: '块大小不能为空', trigger: 'blur' }],
   chunkOverlap: [{ required: true, message: '重叠长度不能为空', trigger: 'blur' }]
@@ -577,7 +578,17 @@ function stopTaskPolling() {
 function loadEmbeddingModels() {
   listAiModelOptions('embedding').then((response) => {
     embeddingModels.value = response.data || []
+    selectDefaultEmbeddingModel()
   })
+}
+
+function selectDefaultEmbeddingModel() {
+  if (documentForm.modelId || embeddingModels.value.length === 0) {
+    return
+  }
+  const defaultModel = embeddingModels.value.find((item: AiModelConfig) => item.isDefault === '1')
+    || embeddingModels.value[0]
+  documentForm.modelId = defaultModel?.modelId
 }
 
 function resetDocumentForm() {
@@ -586,6 +597,7 @@ function resetDocumentForm() {
   documentForm.collectionName = currentCollection.value?.name || ''
   documentForm.documentName = ''
   documentForm.modelId = undefined
+  selectDefaultEmbeddingModel()
   documentForm.separator = '\\n'
   documentForm.chunkSize = 1024
   documentForm.chunkOverlap = 100
@@ -644,6 +656,10 @@ function submitDocument() {
     if (!valid) return
     if (inputMode.value === 'upload' && !selectedFile.value && !documentForm.documentId) {
       proxy.$modal.msgError('请选择 Markdown 文件')
+      return
+    }
+    if (!documentForm.modelId) {
+      proxy.$modal.msgError('请先配置并选择 Embedding 模型')
       return
     }
     const action = documentForm.documentId

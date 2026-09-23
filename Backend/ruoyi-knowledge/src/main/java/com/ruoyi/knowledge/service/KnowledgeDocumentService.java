@@ -134,6 +134,7 @@ public class KnowledgeDocumentService
 
     public KnowledgeTask importDocument(DocumentImportRequest request, MultipartFile file, String username)
     {
+        requireEmbeddingModel(request.getModelId());
         String content = readContent(request, file);
         String documentName = resolveDocumentName(request, file);
         String documentId = "doc_" + UUID.randomUUID().toString().replace("-", "");
@@ -163,6 +164,7 @@ public class KnowledgeDocumentService
     public KnowledgeTask updateDocument(String documentId, DocumentImportRequest request, MultipartFile file,
             String username)
     {
+        requireEmbeddingModel(request.getModelId());
         if (!StringUtils.hasText(documentId))
         {
             throw new ServiceException("文档ID不能为空");
@@ -214,6 +216,9 @@ public class KnowledgeDocumentService
     {
         KnowledgeDocument document = documentMapper.selectDocumentById(documentId);
         boolean managed = document != null;
+        Long selectedModelId = modelId != null ? modelId
+                : document != null ? document.getEmbeddingModelId() : null;
+        requireEmbeddingModel(selectedModelId);
         List<String> originalRecordIds = new ArrayList<>();
         if (!managed)
         {
@@ -243,7 +248,7 @@ public class KnowledgeDocumentService
             documentMapper.updateDocument(document);
         }
         DocumentImportRequest request = toImportRequest(document);
-        request.setModelId(modelId != null ? modelId : document.getEmbeddingModelId());
+        request.setModelId(selectedModelId);
         DocumentTaskPayload payload = new DocumentTaskPayload();
         payload.setRequest(request);
         payload.setManaged(managed);
@@ -329,6 +334,14 @@ public class KnowledgeDocumentService
         document.setChunkSeparator(StringUtils.hasText(request.getSeparator()) ? request.getSeparator() : "\n");
         document.setChunkSize(request.getChunkSize() == null ? 1024 : request.getChunkSize());
         document.setChunkOverlap(request.getChunkOverlap() == null ? 100 : request.getChunkOverlap());
+    }
+
+    private void requireEmbeddingModel(Long modelId)
+    {
+        if (modelId == null)
+        {
+            throw new ServiceException("请选择 Embedding 模型");
+        }
     }
 
     private DocumentImportRequest toImportRequest(KnowledgeDocument document)

@@ -131,29 +131,24 @@ public class DocumentTaskProcessor
                 "已切分为 " + chunks.size() + " 个片段");
         ensureNotCancelled(task.getTaskId());
 
-        List<float[]> embeddings = null;
-        if (request.getModelId() != null)
+        if (request.getModelId() == null)
         {
-            AiModelConfig model = modelService.getRuntimeModel(request.getModelId());
-            if (!"embedding".equals(model.getModelType()))
-            {
-                throw new ServiceException("所选模型不是 embedding 类型");
-            }
-            EmbeddingModel embeddingModel = modelClientFactory.createEmbeddingModel(model);
-            embeddings = new ArrayList<>(chunks.size());
-            for (int i = 0; i < chunks.size(); i++)
-            {
-                ensureNotCancelled(task.getTaskId());
-                embeddings.add(embeddingModel.embed(chunks.get(i)));
-                int progress = 25 + (int) Math.floor(50.0 * (i + 1) / chunks.size());
-                taskService.updateProgress(task.getTaskId(), KnowledgeTaskStatus.RUNNING, progress, "EMBEDDING",
-                        "生成向量 " + (i + 1) + "/" + chunks.size());
-            }
+            throw new ServiceException("请选择 Embedding 模型");
         }
-        else
+        AiModelConfig model = modelService.getRuntimeModel(request.getModelId());
+        if (!"embedding".equals(model.getModelType()))
         {
-            taskService.updateProgress(task.getTaskId(), KnowledgeTaskStatus.RUNNING, 40, "EMBEDDING",
-                    "未选择 embedding 模型，交由 Chroma 处理");
+            throw new ServiceException("所选模型不是 embedding 类型");
+        }
+        EmbeddingModel embeddingModel = modelClientFactory.createEmbeddingModel(model);
+        List<float[]> embeddings = new ArrayList<>(chunks.size());
+        for (int i = 0; i < chunks.size(); i++)
+        {
+            ensureNotCancelled(task.getTaskId());
+            embeddings.add(embeddingModel.embed(chunks.get(i)));
+            int progress = 25 + (int) Math.floor(50.0 * (i + 1) / chunks.size());
+            taskService.updateProgress(task.getTaskId(), KnowledgeTaskStatus.RUNNING, progress, "EMBEDDING",
+                    "生成向量 " + (i + 1) + "/" + chunks.size());
         }
 
         ensureNotCancelled(task.getTaskId());
@@ -164,8 +159,7 @@ public class DocumentTaskProcessor
         for (int start = 0; start < chunks.size(); start += WRITE_BATCH_SIZE)
         {
             int end = Math.min(start + WRITE_BATCH_SIZE, chunks.size());
-            List<float[]> batchEmbeddings = embeddings == null ? null : embeddings.subList(start, end);
-            chromaService.upsert(ids.subList(start, end), batchEmbeddings, metadata.subList(start, end),
+            chromaService.upsert(ids.subList(start, end), embeddings.subList(start, end), metadata.subList(start, end),
                     chunks.subList(start, end), request.getCollectionId());
             written = end;
             int progress = 80 + (int) Math.floor(15.0 * written / chunks.size());
