@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.knowledge.mapper.CustomerServiceConfigMapper">
+
+    <resultMap type="com.ruoyi.knowledge.domain.CustomerServiceConfig" id="CustomerServiceConfigResult">
+        <id property="configId" column="config_id" />
+        <result property="chatModelId" column="chat_model_id" />
+        <result property="embeddingModelId" column="embedding_model_id" />
+        <result property="collectionIdsJson" column="collection_ids" />
+        <result property="topK" column="top_k" />
+        <result property="enabled" column="enabled" />
+        <result property="createBy" column="create_by" />
+        <result property="createTime" column="create_time" />
+        <result property="updateBy" column="update_by" />
+        <result property="updateTime" column="update_time" />
+        <result property="remark" column="remark" />
+    </resultMap>
+
+    <select id="selectConfig" resultMap="CustomerServiceConfigResult">
+        select config_id, chat_model_id, embedding_model_id, collection_ids, top_k,
+               enabled, create_by, create_time, update_by, update_time, remark
+        from ai_customer_service_config
+        order by config_id asc
+        limit 1
+    </select>
+
+    <insert id="insertConfig" parameterType="com.ruoyi.knowledge.domain.CustomerServiceConfig"
+            useGeneratedKeys="true" keyProperty="configId">
+        insert into ai_customer_service_config (
+            chat_model_id, embedding_model_id, collection_ids, top_k, enabled,
+            create_by, create_time, update_by, update_time, remark
+        ) values (
+            #{chatModelId}, #{embeddingModelId}, #{collectionIdsJson}, #{topK}, #{enabled},
+            #{createBy}, sysdate(), #{updateBy}, sysdate(), #{remark}
+        )
+    </insert>
+
+    <update id="updateConfig" parameterType="com.ruoyi.knowledge.domain.CustomerServiceConfig">
+        update ai_customer_service_config
+        set chat_model_id = #{chatModelId},
+            embedding_model_id = #{embeddingModelId},
+            collection_ids = #{collectionIdsJson},
+            top_k = #{topK},
+            enabled = #{enabled},
+            update_by = #{updateBy},
+            update_time = sysdate(),
+            remark = #{remark}
+        where config_id = #{configId}
+    </update>
+
+</mapper>

@@ -10,12 +10,15 @@ import org.springframework.ai.chroma.vectorstore.ChromaApi;
 import org.springframework.ai.chroma.vectorstore.ChromaApi.AddEmbeddingsRequest;
 import org.springframework.ai.chroma.vectorstore.ChromaApi.DeleteEmbeddingsRequest;
 import org.springframework.ai.chroma.vectorstore.ChromaApi.GetEmbeddingResponse;
+import org.springframework.ai.chroma.vectorstore.ChromaApi.QueryRequest;
+import org.springframework.ai.chroma.vectorstore.ChromaApi.QueryResponse;
 import org.springframework.stereotype.Service;
 
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.knowledge.config.KnowledgeProperties;
 import com.ruoyi.knowledge.domain.ChromaRecord;
+import com.ruoyi.knowledge.domain.ChromaSearchResult;
 import com.ruoyi.knowledge.domain.CollectionView;
 
 /**
@@ -140,6 +143,45 @@ public class ChromaCollectionService
         return new ChromaRecord(response.ids().get(0), content, metadata);
     }
 
+    public List<ChromaSearchResult> query(String collectionId, float[] embedding, int topK)
+    {
+        if (StringUtils.isBlank(collectionId))
+        {
+            throw new ServiceException("集合ID不能为空");
+        }
+        if (embedding == null || embedding.length == 0)
+        {
+            throw new ServiceException("查询向量不能为空");
+        }
+        if (topK < 1)
+        {
+            throw new ServiceException("TopK 必须大于 0");
+        }
+        QueryResponse response = chromaApi.queryCollection(tenant(), database(), collectionId,
+                new QueryRequest(List.of(embedding), topK, null,
+                        List.of(QueryRequest.Include.METADATAS, QueryRequest.Include.DOCUMENTS,
+                                QueryRequest.Include.DISTANCES)));
+        if (response == null || response.ids() == null || response.ids().isEmpty())
+        {
+            return Collections.emptyList();
+        }
+        List<String> ids = response.ids().get(0);
+        if (ids == null || ids.isEmpty())
+        {
+            return Collections.emptyList();
+        }
+        List<ChromaSearchResult> result = new ArrayList<>(ids.size());
+        for (int i = 0; i < ids.size(); i++)
+        {
+            String content = valueAt(response.documents(), i, "");
+            Map<String, Object> metadata = valueAt(response.metadata(), i, Collections.emptyMap());
+            Double distance = valueAt(response.distances(), i, null);
+            result.add(new ChromaSearchResult(collectionId, ids.get(i), content,
+                    new LinkedHashMap<>(metadata), distance));
+        }
+        return result;
+    }
+
     public void upsert(List<String> ids, List<float[]> embeddings, List<Map<String, Object>> metadata,
             List<String> documents, String collectionId)
     {
@@ -177,5 +219,15 @@ public class ChromaCollectionService
     private String database()
     {
         return properties.getChroma().getDatabase();
+    }
+
+    private <T> T valueAt(List<List<T>> values, int index, T fallback)
+    {
+        if (values == null || values.isEmpty() || values.get(0) == null || values.get(0).size() <= index)
+        {
+            return fallback;
+        }
+        T value = values.get(0).get(index);
+        return value == null ? fallback : value;
     }
 }
