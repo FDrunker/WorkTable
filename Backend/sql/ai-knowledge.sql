@@ -101,6 +101,8 @@ insert into sys_menu values('3015', '重新向量化', '3001', '6', '', '', '', 
 insert into sys_menu values('3016', '任务查询', '3001', '7', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:list', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3017', '取消任务', '3001', '8', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:cancel', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3018', '重试任务', '3001', '9', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:retry', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3019', '新增集合', '3001', '10', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3020', '删除集合', '3001', '11', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:remove', '#', 'admin', sysdate(), '', null, '');
 
 insert into sys_menu values('3030', '模型查询', '3002', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3031', '模型新增', '3002', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:add', '#', 'admin', sysdate(), '', null, '');
@@ -120,6 +122,8 @@ insert into sys_role_menu values('1', '3015');
 insert into sys_role_menu values('1', '3016');
 insert into sys_role_menu values('1', '3017');
 insert into sys_role_menu values('1', '3018');
+insert into sys_role_menu values('1', '3019');
+insert into sys_role_menu values('1', '3020');
 insert into sys_role_menu values('1', '3030');
 insert into sys_role_menu values('1', '3031');
 insert into sys_role_menu values('1', '3032');

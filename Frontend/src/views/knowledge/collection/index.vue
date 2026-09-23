@@ -17,10 +17,38 @@
     </el-form>
 
     <el-row :gutter="10" class="mb8">
+      <el-col :span="1.5">
+        <el-button
+          type="primary"
+          plain
+          icon="Plus"
+          @click="handleAddCollection"
+          v-hasPermi="['knowledge:collection:add']"
+        >
+          新增集合
+        </el-button>
+      </el-col>
+      <el-col :span="1.5">
+        <el-button
+          type="danger"
+          plain
+          icon="Delete"
+          :disabled="selectedCollectionIds.length === 0"
+          @click="handleDeleteCollections()"
+          v-hasPermi="['knowledge:collection:remove']"
+        >
+          删除集合
+        </el-button>
+      </el-col>
       <right-toolbar @queryTable="getCollections" />
     </el-row>
 
-    <el-table v-loading="collectionLoading" :data="collections">
+    <el-table
+      v-loading="collectionLoading"
+      :data="collections"
+      @selection-change="handleCollectionSelectionChange"
+    >
+      <el-table-column type="selection" width="48" align="center" />
       <el-table-column label="集合名称" prop="name" min-width="240" :show-overflow-tooltip="true">
         <template #default="scope">
           <el-icon class="collection-icon"><Collection /></el-icon>
@@ -29,7 +57,7 @@
       </el-table-column>
       <el-table-column label="集合 ID" prop="id" min-width="260" :show-overflow-tooltip="true" />
       <el-table-column label="文档数" prop="documentCount" width="100" align="center" />
-      <el-table-column label="操作" width="120" align="center">
+      <el-table-column label="操作" width="190" align="center">
         <template #default="scope">
           <el-button
             link
@@ -40,9 +68,35 @@
           >
             管理文档
           </el-button>
+          <el-button
+            link
+            type="danger"
+            icon="Delete"
+            @click="handleDeleteCollections(scope.row)"
+            v-hasPermi="['knowledge:collection:remove']"
+          >
+            删除
+          </el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog v-model="collectionOpen" title="新增集合" width="480px" append-to-body>
+      <el-form ref="collectionRef" :model="collectionForm" :rules="collectionRules" label-width="90px">
+        <el-form-item label="集合名称" prop="name">
+          <el-input
+            v-model="collectionForm.name"
+            placeholder="请输入 Chroma 集合名称"
+            maxlength="255"
+            @keyup.enter="submitCollection"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button type="primary" @click="submitCollection">确定</el-button>
+        <el-button @click="collectionOpen = false">取消</el-button>
+      </template>
+    </el-dialog>
 
     <el-drawer
       v-model="drawerOpen"
@@ -299,6 +353,7 @@
 import type {
   AiModelConfig,
   ChromaCollection,
+  CollectionCreateRequest,
   DocumentImportRequest,
   KnowledgeDocument,
   KnowledgeDocumentChunk,
@@ -308,6 +363,8 @@ import type {
 } from '@/types'
 import {
   cancelKnowledgeTask,
+  createCollection,
+  deleteCollections,
   deleteKnowledgeDocument,
   getKnowledgeDocument,
   importKnowledgeDocument,
@@ -325,6 +382,12 @@ const { proxy } = getCurrentInstance() as any
 const collections = ref<ChromaCollection[]>([])
 const collectionLoading = ref(false)
 const queryParams = reactive({ name: '' })
+const collectionOpen = ref(false)
+const selectedCollectionIds = ref<string[]>([])
+const collectionForm = reactive({ name: '' } as CollectionCreateRequest)
+const collectionRules = {
+  name: [{ required: true, message: '集合名称不能为空', trigger: 'blur' }]
+}
 const drawerOpen = ref(false)
 const currentCollection = ref<ChromaCollection | null>(null)
 const activeTab = ref('documents')
@@ -390,6 +453,54 @@ function getCollections() {
 function resetQuery() {
   queryParams.name = ''
   getCollections()
+}
+
+function handleCollectionSelectionChange(selection: ChromaCollection[]) {
+  selectedCollectionIds.value = selection.map((item: ChromaCollection) => item.id)
+}
+
+function handleAddCollection() {
+  collectionForm.name = ''
+  collectionOpen.value = true
+  nextTick(() => proxy.resetForm('collectionRef'))
+}
+
+function submitCollection() {
+  proxy.$refs.collectionRef.validate((valid: boolean) => {
+    if (!valid) return
+    createCollection(collectionForm).then(() => {
+      proxy.$modal.msgSuccess('集合创建成功')
+      collectionOpen.value = false
+      getCollections()
+    })
+  })
+}
+
+function handleDeleteCollections(row?: ChromaCollection) {
+  const collectionIds = row ? [row.id] : selectedCollectionIds.value
+  if (collectionIds.length === 0) {
+    proxy.$modal.msgError('请选择要删除的集合')
+    return
+  }
+  const names = row
+    ? row.name
+    : collections.value
+        .filter((item: ChromaCollection) => collectionIds.includes(item.id))
+        .map((item: ChromaCollection) => item.name)
+        .join('、')
+  proxy.$modal
+    .confirm(`是否确认删除集合“${names}”？集合内全部文档和切片将同时删除。`)
+    .then(() => deleteCollections(collectionIds))
+    .then(() => {
+      proxy.$modal.msgSuccess('集合删除成功')
+      selectedCollectionIds.value = []
+      getCollections()
+      if (currentCollection.value && collectionIds.includes(currentCollection.value.id)) {
+        drawerOpen.value = false
+        currentCollection.value = null
+      }
+    })
+    .catch(() => {})
 }
 
 function openCollection(collection: ChromaCollection) {

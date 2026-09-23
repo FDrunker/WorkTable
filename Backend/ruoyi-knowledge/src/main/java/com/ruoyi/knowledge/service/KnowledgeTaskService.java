@@ -139,6 +139,11 @@ public class KnowledgeTaskService
         taskMapper.recoverInterruptedTasks();
     }
 
+    public boolean hasActiveTasks(String collectionId)
+    {
+        return taskMapper.countActiveTasks(collectionId) > 0;
+    }
+
     private void submit(Long taskId)
     {
         executor.execute(() -> taskProcessor.getObject().process(taskId));

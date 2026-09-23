@@ -266,6 +266,15 @@ public class KnowledgeDocumentService
         return true;
     }
 
+    public int deleteByCollection(String collectionId)
+    {
+        KnowledgeDocument query = new KnowledgeDocument();
+        query.setCollectionId(collectionId);
+        List<KnowledgeDocument> documents = documentMapper.selectDocumentList(query);
+        documents.forEach(document -> deleteTempFile(document.getTempFilePath()));
+        return documentMapper.deleteDocumentsByCollection(collectionId);
+    }
+
     private KnowledgeTask submitTask(String taskType, KnowledgeDocument document, boolean managed,
             List<String> originalRecordIds, DocumentImportRequest request, String username)
     {

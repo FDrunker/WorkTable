@@ -12,6 +12,8 @@ public interface KnowledgeTaskMapper
 
     KnowledgeTask selectTaskById(@Param("taskId") Long taskId);
 
+    int countActiveTasks(@Param("collectionId") String collectionId);
+
     int insertTask(KnowledgeTask task);
 
     int updateTaskProgress(KnowledgeTask task);

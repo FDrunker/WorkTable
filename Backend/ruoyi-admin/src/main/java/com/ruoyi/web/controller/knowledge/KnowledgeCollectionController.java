@@ -22,11 +22,14 @@ import com.ruoyi.common.core.domain.AjaxResult;
 import com.ruoyi.common.core.page.TableDataInfo;
 import com.ruoyi.common.enums.BusinessType;
 import com.ruoyi.knowledge.domain.CollectionView;
+import com.ruoyi.knowledge.domain.CollectionCreateRequest;
+import com.ruoyi.knowledge.domain.CollectionDeleteRequest;
 import com.ruoyi.knowledge.domain.DocumentChunkView;
 import com.ruoyi.knowledge.domain.DocumentImportRequest;
 import com.ruoyi.knowledge.domain.DocumentView;
 import com.ruoyi.knowledge.service.ChromaCollectionService;
 import com.ruoyi.knowledge.service.KnowledgeDocumentService;
+import com.ruoyi.knowledge.service.KnowledgeTaskService;
 
 @RestController
 @RequestMapping("/knowledge")
@@ -36,11 +39,14 @@ public class KnowledgeCollectionController extends BaseController
 
     private final KnowledgeDocumentService documentService;
 
+    private final KnowledgeTaskService taskService;
+
     public KnowledgeCollectionController(ChromaCollectionService chromaService,
-            KnowledgeDocumentService documentService)
+            KnowledgeDocumentService documentService, KnowledgeTaskService taskService)
     {
         this.chromaService = chromaService;
         this.documentService = documentService;
+        this.taskService = taskService;
     }
 
     @PreAuthorize("@ss.hasPermi('knowledge:collection:list')")
@@ -49,6 +55,39 @@ public class KnowledgeCollectionController extends BaseController
     {
         List<CollectionView> collections = chromaService.listCollections(name);
         return AjaxResult.success(collections);
+    }
+
+    @PreAuthorize("@ss.hasPermi('knowledge:collection:add')")
+    @Log(title = "知识库集合", businessType = BusinessType.INSERT)
+    @PostMapping("/collection")
+    public AjaxResult createCollection(@RequestBody CollectionCreateRequest request)
+    {
+        return AjaxResult.success(chromaService.createCollection(request.getName()));
+    }
+
+    @PreAuthorize("@ss.hasPermi('knowledge:collection:remove')")
+    @Log(title = "知识库集合", businessType = BusinessType.DELETE)
+    @DeleteMapping("/collection")
+    public AjaxResult removeCollections(@RequestBody CollectionDeleteRequest request)
+    {
+        List<String> collectionIds = request.getCollectionIds();
+        if (collectionIds == null || collectionIds.isEmpty())
+        {
+            return AjaxResult.error("请选择要删除的集合");
+        }
+        for (String collectionId : collectionIds)
+        {
+            if (taskService.hasActiveTasks(collectionId))
+            {
+                return AjaxResult.error("集合仍存在运行中的任务，无法删除");
+            }
+        }
+        for (String collectionId : collectionIds)
+        {
+            chromaService.deleteCollection(collectionId);
+            documentService.deleteByCollection(collectionId);
+        }
+        return AjaxResult.success();
     }
 
     @PreAuthorize("@ss.hasPermi('knowledge:document:list')")

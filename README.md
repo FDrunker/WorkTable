@@ -88,7 +88,7 @@ npm run build:prod   # 生产构建
 ## 知识库与模型管理（ruoyi-knowledge）
 
 - **入口**：一级菜单「知识库管理」，包含「向量集合」和「模型管理」。
-- **集合管理**：仅展示和管理 Chroma 中已经存在的集合，不提供新建、重命名或删除集合接口。列表展示名称、集合 ID 和文档数。
+- **集合管理**：支持新增和删除 Chroma 集合。删除集合会同时删除集合内全部切片及本系统对应的文档记录；存在运行中任务时会拒绝删除。列表展示名称、集合 ID 和文档数。
 - **文档管理**：支持上传 `.md` 文件或直接粘贴 Markdown；分隔符、块大小和重叠长度均可配置，默认值分别为 `\n`、`1024`、`100`。
 - **向量生成**：添加或修改文档时可以选择启用的 embedding 模型。如果未选择模型，只向 Chroma 提交 `ids`、`documents` 和 metadata，由集合自身的 embedding function 处理。
 - **逻辑文档**：同一份 Markdown 会切成多个 Chroma 记录，切片 metadata 包含 `documentId`、`documentName`、`chunkIndex` 等字段。编辑文档会删除该 `documentId` 的旧切片并重建；删除会移除该逻辑文档及其全部切片。
@@ -102,6 +102,12 @@ npm run build:prod   # 生产构建
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/ai-knowledge.sql
+```
+
+已经执行过旧版 `ai-knowledge.sql` 的数据库，需要补充集合增删权限：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/ai-knowledge-collection-management.sql
 ```
 
 默认 Chroma 配置为：

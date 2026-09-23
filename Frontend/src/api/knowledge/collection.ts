@@ -2,6 +2,7 @@ import request from '@/utils/request'
 import type {
   AjaxResult,
   ChromaCollection,
+  CollectionCreateRequest,
   DocumentImportRequest,
   KnowledgeDocument,
   KnowledgeDocumentChunk,
@@ -17,6 +18,22 @@ export function listCollections(name?: string): Promise<AjaxResult<ChromaCollect
     url: '/knowledge/collection/list',
     method: 'get',
     params: { name }
+  })
+}
+
+export function createCollection(data: CollectionCreateRequest): Promise<AjaxResult<ChromaCollection>> {
+  return request({
+    url: '/knowledge/collection',
+    method: 'post',
+    data
+  })
+}
+
+export function deleteCollections(collectionIds: string[]): Promise<AjaxResult> {
+  return request({
+    url: '/knowledge/collection',
+    method: 'delete',
+    data: { collectionIds }
   })
 }
 

@@ -59,6 +59,13 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         where task_id = #{taskId}
     </select>
 
+    <select id="countActiveTasks" resultType="int">
+        select count(*)
+        from ai_knowledge_task
+        where collection_id = #{collectionId}
+          and status in ('PENDING', 'RUNNING')
+    </select>
+
     <insert id="insertTask" parameterType="com.ruoyi.knowledge.domain.KnowledgeTask"
             useGeneratedKeys="true" keyProperty="taskId">
         insert into ai_knowledge_task (

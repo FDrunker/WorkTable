@@ -7,6 +7,10 @@ export interface ChromaCollection {
   metadata?: Record<string, any>
 }
 
+export interface CollectionCreateRequest {
+  name: string
+}
+
 export interface KnowledgeDocument {
   documentId: string
   collectionId: string
