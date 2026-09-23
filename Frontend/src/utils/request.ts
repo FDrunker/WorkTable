@@ -6,6 +6,7 @@ import { tansParams, blobValidate } from '@/utils/ruoyi'
 import cache from '@/plugins/cache'
 import { saveAs } from 'file-saver'
 import useUserStore from '@/store/modules/user'
+import { normalizeFormDataRequest } from '@/utils/request-content-type'
 
 let downloadLoadingInstance: ReturnType<typeof ElLoading.service>
 // 是否显示重新登录
@@ -22,6 +23,7 @@ const service = axios.create({
 
 // request拦截器
 service.interceptors.request.use((config: any) => {
+  normalizeFormDataRequest(config)
   // 是否需要设置 token
   const isToken = (config.headers || {}).isToken === false
   // 是否需要防止数据重复提交
@@ -38,7 +40,8 @@ service.interceptors.request.use((config: any) => {
     config.params = {}
     config.url = url
   }
-  if (!isRepeatSubmit && (config.method === 'post' || config.method === 'put')) {
+  const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData
+  if (!isRepeatSubmit && !isFormData && (config.method === 'post' || config.method === 'put')) {
     const requestObj = {
       url: config.url,
       data: typeof config.data === 'object' ? JSON.stringify(config.data) : config.data,
