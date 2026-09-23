@@ -8,14 +8,15 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.knowledge.domain.DocumentTaskPayload;
 import com.ruoyi.knowledge.domain.KnowledgeTask;
 import com.ruoyi.knowledge.mapper.KnowledgeTaskMapper;
 import com.ruoyi.knowledge.model.KnowledgeTaskStatus;
 import com.ruoyi.knowledge.model.KnowledgeTaskType;
+
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 异步任务持久化与调度。
@@ -29,10 +30,10 @@ public class KnowledgeTaskService
 
     private final ThreadPoolTaskExecutor executor;
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     public KnowledgeTaskService(KnowledgeTaskMapper taskMapper, ObjectProvider<DocumentTaskProcessor> taskProcessor,
-            @Qualifier("knowledgeTaskExecutor") ThreadPoolTaskExecutor executor, ObjectMapper objectMapper)
+            @Qualifier("knowledgeTaskExecutor") ThreadPoolTaskExecutor executor, JsonMapper objectMapper)
     {
         this.taskMapper = taskMapper;
         this.taskProcessor = taskProcessor;
@@ -149,7 +150,7 @@ public class KnowledgeTaskService
         {
             return objectMapper.writeValueAsString(payload);
         }
-        catch (JsonProcessingException e)
+        catch (JacksonException e)
         {
             throw new ServiceException("任务请求序列化失败");
         }

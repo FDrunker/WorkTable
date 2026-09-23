@@ -13,7 +13,6 @@ import java.util.UUID;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.knowledge.domain.AiModelConfig;
@@ -25,6 +24,8 @@ import com.ruoyi.knowledge.mapper.KnowledgeDocumentMapper;
 import com.ruoyi.knowledge.mapper.KnowledgeTaskMapper;
 import com.ruoyi.knowledge.model.KnowledgeDocumentStatus;
 import com.ruoyi.knowledge.model.KnowledgeTaskStatus;
+
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 文档导入、更新和重建任务处理器。
@@ -50,12 +51,12 @@ public class DocumentTaskProcessor
 
     private final AiModelClientFactory modelClientFactory;
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper objectMapper;
 
     public DocumentTaskProcessor(KnowledgeTaskMapper taskMapper, KnowledgeDocumentMapper documentMapper,
             KnowledgeTaskService taskService, KnowledgeDocumentService documentService,
             ChromaCollectionService chromaService, MarkdownChunker chunker, AiModelService modelService,
-            AiModelClientFactory modelClientFactory, ObjectMapper objectMapper)
+            AiModelClientFactory modelClientFactory, JsonMapper objectMapper)
     {
         this.taskMapper = taskMapper;
         this.documentMapper = documentMapper;
