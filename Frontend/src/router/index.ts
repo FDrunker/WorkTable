@@ -27,23 +27,55 @@ import Layout from '@/layout/index.vue'
 // 公共路由
 export const constantRoutes = [
   {
-    path: '/redirect',
+    path: '/admin/redirect',
     component: Layout,
     hidden: true,
     children: [
       {
-        path: '/redirect/:path(.*)',
+        path: '/admin/redirect/:path(.*)',
         component: () => import('@/views/redirect/index.vue')
       }
     ]
   },
   {
-    path: '/login',
+    path: '/',
+    component: () => import('@/views/public/chat.vue'),
+    name: 'PublicHome',
+    hidden: true,
+    props: { scene: 'personal-info' },
+    meta: { title: '个人信息', public: true }
+  },
+  {
+    path: '/personal-info',
+    component: () => import('@/views/public/chat.vue'),
+    name: 'PublicPersonalInfo',
+    hidden: true,
+    props: { scene: 'personal-info' },
+    meta: { title: '个人信息', public: true }
+  },
+  {
+    path: '/customer-service',
+    component: () => import('@/views/public/chat.vue'),
+    name: 'PublicCustomerService',
+    hidden: true,
+    props: { scene: 'customer-service' },
+    meta: { title: '智能客服', public: true }
+  },
+  {
+    path: '/chat/:scene',
+    component: () => import('@/views/public/chat.vue'),
+    name: 'PublicChatScene',
+    hidden: true,
+    props: true,
+    meta: { title: 'AI 对话', public: true }
+  },
+  {
+    path: '/admin/login',
     component: () => import('@/views/login.vue'),
     hidden: true
   },
   {
-    path: '/register',
+    path: '/admin/register',
     component: () => import('@/views/register.vue'),
     hidden: true
   },
@@ -53,17 +85,17 @@ export const constantRoutes = [
     hidden: true
   },
   {
-    path: '/401',
+    path: '/admin/401',
     component: () => import('@/views/error/401.vue'),
     hidden: true
   },
   {
-    path: '',
+    path: '/admin',
     component: Layout,
-    redirect: '/index',
+    redirect: '/admin/index',
     children: [
       {
-        path: '/index',
+        path: '/admin/index',
         component: () => import('@/views/index.vue'),
         name: 'Index',
         meta: { title: '首页', icon: 'dashboard', affix: true }
@@ -71,13 +103,13 @@ export const constantRoutes = [
     ]
   },
   {
-    path: '/lock',
+    path: '/admin/lock',
     component: () => import('@/views/lock.vue'),
     hidden: true,
     meta: { title: '锁定屏幕' }
   },
   {
-    path: '/user',
+    path: '/admin/user',
     component: Layout,
     hidden: true,
     redirect: 'noredirect',
@@ -95,7 +127,7 @@ export const constantRoutes = [
 // 动态路由，基于用户权限动态去加载
 export const dynamicRoutes = [
   {
-    path: '/system/user-auth',
+    path: '/admin/system/user-auth',
     component: Layout,
     hidden: true,
     permissions: ['system:user:edit'],
@@ -104,12 +136,12 @@ export const dynamicRoutes = [
         path: 'role/:userId(\\d+)',
         component: () => import('@/views/system/user/authRole.vue'),
         name: 'AuthRole',
-        meta: { title: '分配角色', activeMenu: '/system/user' }
+        meta: { title: '分配角色', activeMenu: '/admin/system/user' }
       }
     ]
   },
   {
-    path: '/system/role-auth',
+    path: '/admin/system/role-auth',
     component: Layout,
     hidden: true,
     permissions: ['system:role:edit'],
@@ -118,12 +150,12 @@ export const dynamicRoutes = [
         path: 'user/:roleId(\\d+)',
         component: () => import('@/views/system/role/authUser.vue'),
         name: 'AuthUser',
-        meta: { title: '分配用户', activeMenu: '/system/role' }
+        meta: { title: '分配用户', activeMenu: '/admin/system/role' }
       }
     ]
   },
   {
-    path: '/system/dict-data',
+    path: '/admin/system/dict-data',
     component: Layout,
     hidden: true,
     permissions: ['system:dict:list'],
@@ -132,12 +164,12 @@ export const dynamicRoutes = [
         path: 'index/:dictId(\\d+)',
         component: () => import('@/views/system/dict/data.vue'),
         name: 'Data',
-        meta: { title: '字典数据', activeMenu: '/system/dict' }
+        meta: { title: '字典数据', activeMenu: '/admin/system/dict' }
       }
     ]
   },
   {
-    path: '/monitor/job-log',
+    path: '/admin/monitor/job-log',
     component: Layout,
     hidden: true,
     permissions: ['monitor:job:list'],
@@ -146,12 +178,12 @@ export const dynamicRoutes = [
         path: 'index/:jobId(\\d+)',
         component: () => import('@/views/monitor/job/log.vue'),
         name: 'JobLog',
-        meta: { title: '调度日志', activeMenu: '/monitor/job' }
+        meta: { title: '调度日志', activeMenu: '/admin/monitor/job' }
       }
     ]
   },
   {
-    path: '/tool/gen-edit',
+    path: '/admin/tool/gen-edit',
     component: Layout,
     hidden: true,
     permissions: ['tool:gen:edit'],
@@ -160,7 +192,7 @@ export const dynamicRoutes = [
         path: 'index/:tableId(\\d+)',
         component: () => import('@/views/tool/gen/editTable.vue'),
         name: 'GenEdit',
-        meta: { title: '修改生成配置', activeMenu: '/tool/gen' }
+        meta: { title: '修改生成配置', activeMenu: '/admin/tool/gen' }
       }
     ]
   }

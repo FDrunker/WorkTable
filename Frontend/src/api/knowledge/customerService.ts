@@ -4,13 +4,22 @@ import type {
   CustomerServiceChatRequest,
   CustomerServiceChatResponse,
   CustomerServiceConfig,
-  CustomerServiceOptions
+  CustomerServiceOptions,
+  CustomerServiceScene
 } from '@/types'
 
-export function getCustomerServiceConfig(): Promise<AjaxResult<CustomerServiceConfig>> {
+export function getCustomerServiceScenes(): Promise<AjaxResult<CustomerServiceScene[]>> {
+  return request({
+    url: '/knowledge/ai-chat/scenes',
+    method: 'get'
+  })
+}
+
+export function getCustomerServiceConfig(scene = 'admin'): Promise<AjaxResult<CustomerServiceConfig>> {
   return request({
     url: '/knowledge/ai-chat/config',
-    method: 'get'
+    method: 'get',
+    params: { scene }
   })
 }
 
@@ -32,12 +41,14 @@ export function updateCustomerServiceConfig(
 }
 
 export function chatWithCustomerService(
-  data: CustomerServiceChatRequest
+  data: CustomerServiceChatRequest,
+  scene = 'admin'
 ): Promise<AjaxResult<CustomerServiceChatResponse>> {
   return request({
     url: '/knowledge/ai-chat/chat',
     method: 'post',
     data,
+    params: { scene },
     timeout: 180000
   })
 }

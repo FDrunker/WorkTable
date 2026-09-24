@@ -156,7 +156,7 @@ function isAffix(tag: any): boolean {
 function isFirstView(): boolean {
   try {
     const tag = selectedTag.value && selectedTag.value.fullPath ? selectedTag.value : selectedDropdownTag.value
-    return tag.fullPath === '/index' || tag.fullPath === visitedViews.value[1].fullPath
+    return tag.fullPath === '/admin/index' || tag.fullPath === visitedViews.value[1].fullPath
   } catch (err) {
     return false
   }
@@ -346,9 +346,9 @@ function toLastView(visitedViews: any[], view?: any): void {
     router.push(latestView.fullPath)
   } else {
     if (view && view.name === 'Dashboard') {
-      router.replace({ path: '/redirect' + view.fullPath })
+      router.replace({ path: '/admin/redirect' + view.fullPath })
     } else {
-      router.push('/')
+      router.push('/admin/index')
     }
   }
 }

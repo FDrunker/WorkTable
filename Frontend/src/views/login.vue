@@ -53,7 +53,7 @@
           <span v-else>登 录 中...</span>
         </el-button>
         <div style="float: right;" v-if="register">
-          <router-link class="link-type" :to="'/register'">立即注册</router-link>
+          <router-link class="link-type" :to="'/admin/register'">立即注册</router-link>
         </div>
       </el-form-item>
     </el-form>
@@ -130,7 +130,7 @@ function handleLogin(): void {
           }
           return acc
         }, {})
-        router.push({ path: redirect.value || "/", query: otherQueryParams })
+        router.push({ path: redirect.value || "/admin/index", query: otherQueryParams })
       }).catch(() => {
         loading.value = false
         // 重新获取验证码

@@ -127,7 +127,7 @@ function getList() {
 
 /** 返回按钮 */
 function handleClose() {
-  const obj = { path: "/system/role" }
+  const obj = { path: "/admin/system/role" }
   proxy.$tab.closeOpenPage(obj)
 }
 

@@ -11,6 +11,12 @@ public class CustomerServiceConfig extends BaseEntity
 
     private Long configId;
 
+    private String scene;
+
+    private String title;
+
+    private String welcomeMessage;
+
     private Long chatModelId;
 
     private Long embeddingModelId;
@@ -29,6 +35,36 @@ public class CustomerServiceConfig extends BaseEntity
     public void setConfigId(Long configId)
     {
         this.configId = configId;
+    }
+
+    public String getScene()
+    {
+        return scene;
+    }
+
+    public void setScene(String scene)
+    {
+        this.scene = scene;
+    }
+
+    public String getTitle()
+    {
+        return title;
+    }
+
+    public void setTitle(String title)
+    {
+        this.title = title;
+    }
+
+    public String getWelcomeMessage()
+    {
+        return welcomeMessage;
+    }
+
+    public void setWelcomeMessage(String welcomeMessage)
+    {
+        this.welcomeMessage = welcomeMessage;
     }
 
     public Long getChatModelId()

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.knowledge.mapper.AiChatConversationMapper">
+
+    <resultMap type="com.ruoyi.knowledge.domain.AiChatConversation" id="AiChatConversationResult">
+        <id property="conversationId" column="conversation_id" />
+        <result property="visitorId" column="visitor_id" />
+        <result property="scene" column="scene" />
+        <result property="title" column="title" />
+        <result property="createTime" column="create_time" />
+        <result property="updateTime" column="update_time" />
+        <result property="messageCount" column="message_count" />
+        <result property="lastMessage" column="last_message" />
+    </resultMap>
+
+    <resultMap type="com.ruoyi.knowledge.domain.AiChatMessage" id="AiChatMessageResult">
+        <id property="messageId" column="message_id" />
+        <result property="conversationId" column="conversation_id" />
+        <result property="role" column="role" />
+        <result property="content" column="content" />
+        <result property="intent" column="intent" />
+        <result property="intentConfidence" column="intent_confidence" />
+        <result property="needsClarification" column="needs_clarification" />
+        <result property="sourcesJson" column="sources_json" />
+        <result property="createTime" column="create_time" />
+    </resultMap>
+
+    <select id="selectConversationList" resultMap="AiChatConversationResult">
+        select c.conversation_id, c.visitor_id, c.scene, c.title, c.create_time, c.update_time,
+               (select count(*) from ai_chat_message m where m.conversation_id = c.conversation_id) as message_count,
+               (select m2.content from ai_chat_message m2
+                where m2.conversation_id = c.conversation_id
+                order by m2.message_id desc limit 1) as last_message
+        from ai_chat_conversation c
+        where c.visitor_id = #{visitorId}
+          and c.scene = #{scene}
+        order by c.update_time desc, c.conversation_id desc
+        limit 100
+    </select>
+
+    <select id="selectConversationById" resultMap="AiChatConversationResult">
+        select conversation_id, visitor_id, scene, title, create_time, update_time
+        from ai_chat_conversation
+        where conversation_id = #{conversationId}
+    </select>
+
+    <insert id="insertConversation" parameterType="com.ruoyi.knowledge.domain.AiChatConversation">
+        insert into ai_chat_conversation (
+            conversation_id, visitor_id, scene, title, create_time, update_time
+        ) values (
+            #{conversationId}, #{visitorId}, #{scene}, #{title}, sysdate(), sysdate()
+        )
+    </insert>
+
+    <update id="updateConversationTitle">
+        update ai_chat_conversation
+        set title = #{title},
+            update_time = sysdate()
+        where conversation_id = #{conversationId}
+    </update>
+
+    <update id="touchConversation">
+        update ai_chat_conversation
+        set update_time = sysdate()
+        where conversation_id = #{conversationId}
+    </update>
+
+    <delete id="deleteConversation">
+        delete from ai_chat_conversation
+        where conversation_id = #{conversationId}
+    </delete>
+
+    <delete id="deleteMessages">
+        delete from ai_chat_message
+        where conversation_id = #{conversationId}
+    </delete>
+
+    <select id="selectMessages" resultMap="AiChatMessageResult">
+        select message_id, conversation_id, role, content, intent, intent_confidence,
+               needs_clarification, sources_json, create_time
+        from ai_chat_message
+        where conversation_id = #{conversationId}
+        order by message_id asc
+    </select>
+
+    <select id="selectRecentMessages" resultMap="AiChatMessageResult">
+        select message_id, conversation_id, role, content, intent, intent_confidence,
+               needs_clarification, sources_json, create_time
+        from ai_chat_message
+        where conversation_id = #{conversationId}
+        order by message_id desc
+        limit #{limit}
+    </select>
+
+    <select id="countMessages" resultType="int">
+        select count(*)
+        from ai_chat_message
+        where conversation_id = #{conversationId}
+    </select>
+
+    <insert id="insertMessage" parameterType="com.ruoyi.knowledge.domain.AiChatMessage"
+            useGeneratedKeys="true" keyProperty="messageId">
+        insert into ai_chat_message (
+            conversation_id, role, content, intent, intent_confidence,
+            needs_clarification, sources_json, create_time
+        ) values (
+            #{conversationId}, #{role}, #{content}, #{intent}, #{intentConfidence},
+            #{needsClarification}, #{sourcesJson}, sysdate()
+        )
+    </insert>
+
+</mapper>

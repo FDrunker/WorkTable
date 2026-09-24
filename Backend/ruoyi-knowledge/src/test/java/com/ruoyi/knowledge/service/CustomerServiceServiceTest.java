@@ -71,7 +71,7 @@ class CustomerServiceServiceTest
         ChatModel chatModel = mock(ChatModel.class);
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
         float[] queryEmbedding = new float[] { 1F, 0F };
-        when(configMapper.selectConfig()).thenReturn(config);
+        when(configMapper.selectConfig("admin")).thenReturn(config);
         when(modelService.getRuntimeModel(11L)).thenReturn(chatConfig);
         when(modelService.getRuntimeModel(12L)).thenReturn(embeddingConfig);
         when(modelClientFactory.createChatModel(chatConfig)).thenReturn(chatModel);
@@ -110,7 +110,7 @@ class CustomerServiceServiceTest
         AiModelConfig embeddingConfig = model("embedding");
         ChatModel chatModel = mock(ChatModel.class);
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        when(configMapper.selectConfig()).thenReturn(config);
+        when(configMapper.selectConfig("admin")).thenReturn(config);
         when(modelService.getRuntimeModel(11L)).thenReturn(chatConfig);
         when(modelService.getRuntimeModel(12L)).thenReturn(embeddingConfig);
         when(modelClientFactory.createChatModel(chatConfig)).thenReturn(chatModel);
@@ -137,7 +137,7 @@ class CustomerServiceServiceTest
         AiModelConfig embeddingConfig = model("embedding");
         ChatModel chatModel = mock(ChatModel.class);
         EmbeddingModel embeddingModel = mock(EmbeddingModel.class);
-        when(configMapper.selectConfig()).thenReturn(config);
+        when(configMapper.selectConfig("admin")).thenReturn(config);
         when(modelService.getRuntimeModel(11L)).thenReturn(chatConfig);
         when(modelService.getRuntimeModel(12L)).thenReturn(embeddingConfig);
         when(modelClientFactory.createChatModel(chatConfig)).thenReturn(chatModel);
@@ -172,20 +172,23 @@ class CustomerServiceServiceTest
         when(chromaService.listCollections(null)).thenReturn(List.of(
                 new CollectionView("col-1", "售后知识", 10L, Map.of()),
                 new CollectionView("col-2", "产品知识", 20L, Map.of())));
-        when(configMapper.selectConfig()).thenReturn(null, saved);
+        when(configMapper.selectConfig("admin")).thenReturn(null, saved);
 
         var result = service.saveConfig(
-                new CustomerServiceConfigRequest(11L, 12L, List.of("col-1", "col-2"), 3, "1"), "tester");
+                new CustomerServiceConfigRequest("admin", "后台 AI 对话", "你好",
+                        11L, 12L, List.of("col-1", "col-2"), 3, "1"),
+                "tester");
 
         assertEquals(List.of("col-1", "col-2"), result.collectionIds());
         assertEquals(3, result.topK());
+        assertEquals("admin", result.scene());
         verify(configMapper).insertConfig(any(CustomerServiceConfig.class));
     }
 
     @Test
     void rejectsChatWhenConfigurationIsMissing()
     {
-        when(configMapper.selectConfig()).thenReturn(null);
+        when(configMapper.selectConfig("admin")).thenReturn(null);
 
         assertThrows(ServiceException.class,
                 () -> service.chat(new CustomerServiceChatRequest("你好", List.of())));

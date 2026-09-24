@@ -8,6 +8,9 @@ import java.util.List;
  */
 public record CustomerServiceConfigView(
         Long configId,
+        String scene,
+        String title,
+        String welcomeMessage,
         Long chatModelId,
         Long embeddingModelId,
         List<String> collectionIds,

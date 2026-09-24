@@ -73,6 +73,7 @@ mysql -uroot -p < Backend/sql/ai-knowledge.sql
 | `ai-knowledge-collection-management.sql` | 旧版数据库补知识库新增/删除权限 |
 | `customer-service.sql` | 旧版知识库升级 AI 对话能力 |
 | `ai-chat-menu.sql` | 智能客服菜单升级为一级“AI 对话” |
+| `public-ai-chat.sql` | 已有数据库升级场景化配置、公开会话与消息持久化 |
 | `menu-restructure.sql` | 知识库、模型管理提升为一级菜单并删除若依官网菜单 |
 
 这些迁移脚本部分不是幂等的，执行前应先确认当前库状态，并做好备份。
@@ -232,9 +233,24 @@ Controller：`CustomerServiceController`
 | 方法与路径 | 说明 |
 | --- | --- |
 | `GET /knowledge/ai-chat/config` | 获取 AI 对话配置 |
+| `GET /knowledge/ai-chat/scenes` | 获取公开 AI 对话场景选项 |
 | `GET /knowledge/ai-chat/options` | 获取 chat 模型、embedding 模型和知识库选项 |
 | `PUT /knowledge/ai-chat/config` | 保存配置 |
 | `POST /knowledge/ai-chat/chat` | 执行一次知识库问答 |
+
+`config` 和 `chat` 支持 `scene` 查询参数，默认值为 `admin`；可选场景为 `admin`、`personal-info`、`customer-service`。
+
+Controller：`PublicAiChatController`，整个 Controller 标记 `@Anonymous`，对应前端免登录主页。
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET /public/ai-chat/scenes` | 获取公开场景、标题和欢迎语 |
+| `GET /public/ai-chat/{scene}/bootstrap` | 获取场景状态和访客历史会话 |
+| `POST /public/ai-chat/{scene}/conversations` | 新建匿名会话 |
+| `GET /public/ai-chat/{scene}/conversations` | 获取访客会话列表 |
+| `GET /public/ai-chat/{scene}/conversations/{conversationId}` | 获取会话消息详情 |
+| `DELETE /public/ai-chat/{scene}/conversations/{conversationId}` | 删除访客自己的会话和消息 |
+| `POST /public/ai-chat/{scene}/conversations/{conversationId}/messages` | 提问、调用知识库问答并保存双方消息 |
 
 ### 6.4 微信归档
 
@@ -256,7 +272,7 @@ Controller：`ruoyi-admin/.../web/controller/wechat/WechatChatController.java`
 | `GET /wechat/analysis/{analysisId}` | 读取分析详情 |
 | `DELETE /wechat/analysis/{analysisIds}` | 删除历史分析记录 |
 
-所有自研 Controller 都使用 `@PreAuthorize`，但前端菜单和按钮权限必须与 `Backend/sql/` 中的权限标识保持一致。
+后台自研 Controller 使用 `@PreAuthorize`；`PublicAiChatController` 是明确的匿名执行边界。前端菜单和按钮权限必须与 `Backend/sql/` 中的权限标识保持一致。
 
 ## 7. MySQL 数据模型
 
@@ -281,9 +297,11 @@ Controller：`ruoyi-admin/.../web/controller/wechat/WechatChatController.java`
 | `ai_model_config` | 模型提供商、类型、模型代码、Base URL、加密后的 API Key、默认和测试状态 |
 | `ai_knowledge_document` | 本系统管理的逻辑文档、Markdown 原文、切片参数、任务状态 |
 | `ai_knowledge_task` | 导入、修改、重建任务的持久化状态和请求快照 |
-| `ai_customer_service_config` | AI 对话选择的 chat/embedding 模型、知识库、TopK 和启用状态 |
+| `ai_customer_service_config` | 按 `scene` 保存页面标题、欢迎语、chat/embedding 模型、知识库、TopK 和启用状态 |
+| `ai_chat_conversation` | 公开 AI 会话、匿名 `visitor_id`、场景、标题和更新时间 |
+| `ai_chat_message` | 公开 AI 消息、角色、意图、澄清状态和知识来源 JSON |
 
-`ai_knowledge_document` 没有 `user_id`，知识库数据是系统级共享资源，访问控制依赖菜单权限。
+`ai_knowledge_document` 没有 `user_id`，知识库数据是系统级共享资源，访问控制依赖菜单权限。`ai_chat_conversation` 使用浏览器生成的 `visitor_id` 隔离匿名历史，查询和删除都会同时校验 `visitor_id + scene`；它不是登录身份的替代品。
 
 ### 微信表
 
@@ -376,6 +394,18 @@ POST /knowledge/ai-chat/chat
 - 拼给模型的上下文最多 24000 字符。
 - 多个知识库中只有一个失败时继续使用其他知识库；全部失败才报错。
 - 回答 JSON 解析失败时退化为原始模型文本。
+
+公开链路在 `PublicAiChatService` 中复用上述问答编排：
+
+```text
+POST /public/ai-chat/{scene}/conversations/{conversationId}/messages
+  -> 校验 scene 和 visitorId 会话归属
+  -> 读取最近 10 条持久化消息作为历史
+  -> CustomerServiceService 执行意图识别、检索与回答
+  -> 写入 user / assistant 两条 ai_chat_message
+  -> 首条消息用问题摘要生成会话标题
+  -> 返回本次回复，前端刷新历史列表
+```
 
 ## 11. 微信归档链路
 

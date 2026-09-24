@@ -289,7 +289,7 @@ function handleCommand(command: string, row: SysUser) {
 /** 跳转角色分配 */
 function handleAuthRole(row: SysUser) {
   const userId = row.userId
-  router.push("/system/user-auth/role/" + userId)
+  router.push("/admin/system/user-auth/role/" + userId)
 }
 
 /** 重置密码按钮操作 */

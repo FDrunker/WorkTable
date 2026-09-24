@@ -8,7 +8,7 @@
           </div>
           <div class="service-heading">
             <div class="service-name-row">
-              <h2>AI对话</h2>
+              <h2>{{ activeSceneTitle }}</h2>
               <span class="status-dot" :class="{ online: isReady }"></span>
               <span class="status-text">{{ statusText }}</span>
             </div>
@@ -21,6 +21,13 @@
             </div>
           </div>
         </div>
+
+        <el-segmented
+          v-model="activeScene"
+          class="scene-selector"
+          :options="sceneOptions"
+          @change="handleSceneChange"
+        />
 
         <el-button
           icon="Setting"
@@ -142,13 +149,27 @@
       </footer>
     </section>
 
-    <el-dialog v-model="settingsOpen" title="AI对话设置" width="640px" append-to-body>
+    <el-dialog v-model="settingsOpen" :title="`${activeSceneTitle}设置`" width="640px" append-to-body>
       <el-form
         ref="settingsRef"
         :model="settingsForm"
         :rules="settingsRules"
         label-width="104px"
       >
+        <el-form-item label="页面标题" prop="title">
+          <el-input v-model="settingsForm.title" maxlength="64" show-word-limit />
+        </el-form-item>
+
+        <el-form-item label="欢迎语" prop="welcomeMessage">
+          <el-input
+            v-model="settingsForm.welcomeMessage"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+
         <el-form-item label="对话模型" prop="chatModelId">
           <el-select v-model="settingsForm.chatModelId" filterable class="full-width">
             <el-option
@@ -213,12 +234,14 @@ import type {
   CustomerServiceChatTurn,
   CustomerServiceConfig,
   CustomerServiceOptions,
+  CustomerServiceScene,
   CustomerServiceSource
 } from '@/types'
 import {
   chatWithCustomerService,
   getCustomerServiceConfig,
   getCustomerServiceOptions,
+  getCustomerServiceScenes,
   updateCustomerServiceConfig
 } from '@/api/knowledge/customerService'
 
@@ -241,8 +264,17 @@ const messageListRef = ref<HTMLElement>()
 const settingsRef = ref()
 const draft = ref('')
 const messages = ref<ChatMessage[]>([])
+const activeScene = ref('admin')
+const sceneOptions = ref([
+  { label: '后台 AI 对话', value: 'admin' },
+  { label: '个人信息', value: 'personal-info' },
+  { label: '智能客服', value: 'customer-service' }
+])
 
 const defaultConfig = (): CustomerServiceConfig => ({
+  scene: activeScene.value,
+  title: '',
+  welcomeMessage: '',
   collectionIds: [],
   topK: 5,
   enabled: '1'
@@ -257,6 +289,8 @@ const options = ref<CustomerServiceOptions>({
 const settingsForm = reactive<CustomerServiceConfig>(defaultConfig())
 
 const settingsRules = {
+  title: [{ required: true, message: '请输入页面标题', trigger: 'blur' }],
+  welcomeMessage: [{ required: true, message: '请输入欢迎语', trigger: 'blur' }],
   chatModelId: [{ required: true, message: '请选择对话模型', trigger: 'change' }],
   embeddingModelId: [{ required: true, message: '请选择向量模型', trigger: 'change' }],
   collectionIds: [{ required: true, type: 'array', min: 1, message: '请选择知识库集合', trigger: 'change' }],
@@ -264,6 +298,9 @@ const settingsRules = {
 }
 
 const canEdit = computed(() => proxy.$auth.hasPermi('ai:chat:edit'))
+const activeSceneTitle = computed(
+  () => sceneOptions.value.find((item: { value: string }) => item.value === activeScene.value)?.label || 'AI对话'
+)
 const isConfigured = computed(
   () =>
     config.value.chatModelId !== undefined &&
@@ -280,27 +317,47 @@ const currentChatModelName = computed(() => {
 async function loadData() {
   loading.value = true
   try {
-    const [configResponse, optionsResponse] = await Promise.all([
-      getCustomerServiceConfig(),
-      getCustomerServiceOptions()
+    const [optionsResponse, scenesResponse] = await Promise.all([
+      getCustomerServiceOptions(),
+      getCustomerServiceScenes()
     ])
-    config.value = configResponse.data || defaultConfig()
     options.value = optionsResponse.data || {
       chatModels: [],
       embeddingModels: [],
       collections: []
     }
-    if (!isConfigured.value && canEdit.value) {
-      openSettings()
+    const scenes: CustomerServiceScene[] = scenesResponse.data || []
+    if (scenes.length) {
+      sceneOptions.value = [
+        { label: '后台 AI 对话', value: 'admin' },
+        ...scenes.map((item) => ({ label: item.title || item.scene, value: item.scene }))
+      ]
     }
+    await loadConfig()
   } finally {
     loading.value = false
   }
 }
 
+async function loadConfig() {
+  loading.value = true
+  try {
+    const response = await getCustomerServiceConfig(activeScene.value)
+    config.value = response.data || { ...defaultConfig(), scene: activeScene.value }
+  } finally {
+    loading.value = false
+  }
+}
+
+function handleSceneChange() {
+  messages.value = []
+  loadConfig()
+}
+
 function openSettings() {
   Object.assign(settingsForm, {
     ...config.value,
+    scene: activeScene.value,
     collectionIds: [...config.value.collectionIds]
   })
   settingsOpen.value = true
@@ -350,7 +407,7 @@ async function sendMessage() {
   await scrollToBottom()
 
   try {
-    const response = await chatWithCustomerService({ question, history })
+    const response = await chatWithCustomerService({ question, history }, activeScene.value)
     appendAssistantMessage(response.data)
   } finally {
     sending.value = false

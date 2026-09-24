@@ -12,7 +12,7 @@ import usePermissionStore from '@/store/modules/permission'
 
 NProgress.configure({ showSpinner: false })
 
-const whiteList = ['/login', '/register']
+const whiteList = ['/admin/login', '/admin/register']
 
 const isWhiteList = (path: string): boolean => {
   return whiteList.some((pattern: string) => isPathMatch(pattern, path))
@@ -20,23 +20,26 @@ const isWhiteList = (path: string): boolean => {
 
 router.beforeEach(async (to, from) => {
   NProgress.start()
+  to.meta.title && useSettingsStore().setTitle(to.meta.title as string)
   if (getToken()) {
-    to.meta.title && useSettingsStore().setTitle(to.meta.title as string)
+    if (to.meta.public === true) {
+      return true
+    }
     const isLock = useLockStore().isLock
-    if (to.path === '/login') {
+    if (to.path === '/admin/login') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/admin/index' }
     }
     if (isWhiteList(to.path)) {
       return true
     }
-    if (isLock && to.path !== '/lock') {
+    if (isLock && to.path !== '/admin/lock') {
       NProgress.done()
-      return { path: '/lock' }
+      return { path: '/admin/lock' }
     }
-    if (!isLock && to.path === '/lock') {
+    if (!isLock && to.path === '/admin/lock') {
       NProgress.done()
-      return { path: '/' }
+      return { path: '/admin/index' }
     }
     if (useUserStore().roles.length === 0) {
       isRelogin.show = true
@@ -56,18 +59,18 @@ router.beforeEach(async (to, from) => {
       } catch (err) {
         await useUserStore().logOut()
         ElMessage.error(err)
-        return { path: '/' }
+        return { path: '/admin/login' }
       }
     }
     return true
   } else {
     // 没有token
-    if (isWhiteList(to.path)) {
+    if (to.meta.public === true || isWhiteList(to.path)) {
       // 在免登录白名单，直接进入
       return true
     }
     NProgress.done()
-    return `/login?redirect=${to.fullPath}` // 否则全部重定向到登录页
+    return `/admin/login?redirect=${to.fullPath}` // 否则全部重定向到登录页
   }
 })
 

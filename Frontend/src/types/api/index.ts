@@ -6,6 +6,7 @@ export * from "./common";
 // 登录模块
 export * from "./login";
 export * from "./menu";
+export * from "./publicChat";
 
 // System 模块
 export * from "./system/user";

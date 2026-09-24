@@ -44,7 +44,7 @@ const visibleNumber = ref<number | null>(null)
 // 当前激活菜单的 index
 const currentIndex = ref<string | null>(null)
 // 隐藏侧边栏路由
-const hideList = ['/index', '/user/profile']
+const hideList = ['/admin/index', '/admin/user/profile']
 
 const appStore = useAppStore()
 const settingsStore = useSettingsStore()
@@ -79,8 +79,8 @@ const childrenMenus = computed(() => {
   routers.value.map((router: any) => {
     for (const item in router.children) {
       if (router.children[item].parentPath === undefined) {
-        if(router.path === "/") {
-          router.children[item].path = "/" + router.children[item].path
+        if(router.path === "/admin") {
+          router.children[item].path = "/admin/" + router.children[item].path
         } else {
           if(!isHttp(router.children[item].path)) {
             router.children[item].path = router.path + "/" + router.children[item].path
@@ -99,9 +99,9 @@ const activeMenu = computed(() => {
   const path = route.path
   let activePath = path
   if (path !== undefined && path.lastIndexOf("/") > 0 && hideList.indexOf(path) === -1) {
-    const tmpPath = path.substring(1, path.length)
+    const segments = path.split('/').filter(Boolean)
     if (!route.meta.link) {
-      activePath = "/" + tmpPath.substring(0, tmpPath.indexOf("/"))
+      activePath = segments.length > 1 ? `/${segments.slice(0, 2).join('/')}` : path
       appStore.toggleSideBarHide(false)
     }
   } else if(!(route as any).children) {
@@ -144,7 +144,7 @@ function activeRoutes(key: string){
   const routes: any[] = []
   if (childrenMenus.value && childrenMenus.value.length > 0) {
     childrenMenus.value.map((item: any) => {
-      if (key == item.parentPath || (key == "index" && "" == item.path)) {
+      if (key == item.parentPath || (key == "/admin/index" && "" == item.path)) {
         routes.push(item)
       }
     })

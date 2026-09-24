@@ -372,7 +372,7 @@ function crontabFill(value: string) {
 /** 任务日志列表查询 */
 function handleJobLog(row: SysJob) {
   const jobId = row.jobId || 0
-  router.push('/monitor/job-log/index/' + jobId)
+  router.push('/admin/monitor/job-log/index/' + jobId)
 }
 
 /** 新增按钮操作 */

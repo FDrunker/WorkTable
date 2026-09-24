@@ -6,7 +6,7 @@ export default {
   refreshPage(obj?: any) {
     const { path, query, matched } = router.currentRoute.value
     // 防止在重定向过程中重复刷新
-    if (path.startsWith('/redirect/')) {
+    if (path.startsWith('/admin/redirect/')) {
       return Promise.resolve()
     }
     if (obj === undefined) {
@@ -21,7 +21,7 @@ export default {
     return useTagsViewStore().delCachedView(obj).then(() => {
       const { path, query } = obj
       router.replace({
-        path: '/redirect' + path,
+        path: '/admin/redirect' + path,
         query: query
       })
     })
@@ -41,7 +41,7 @@ export default {
         if (latestView) {
           return router.push(latestView.fullPath)
         }
-        return router.push('/')
+        return router.push('/admin/index')
       })
     }
     return useTagsViewStore().delView(obj)

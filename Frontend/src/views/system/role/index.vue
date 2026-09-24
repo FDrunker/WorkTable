@@ -311,7 +311,7 @@ function handleCommand(command: string, row: SysRole) {
 
 /** 分配用户 */
 function handleAuthUser(row: SysRole) {
-  router.push("/system/role-auth/user/" + row.roleId)
+  router.push("/admin/system/role-auth/user/" + row.roleId)
 }
 
 /** 查询菜单树结构 */

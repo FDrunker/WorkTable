@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.ruoyi.common.annotation.Log;
@@ -29,9 +30,16 @@ public class CustomerServiceController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('ai:chat:list')")
     @GetMapping("/config")
-    public AjaxResult getConfig()
+    public AjaxResult getConfig(@RequestParam(defaultValue = "admin") String scene)
     {
-        return AjaxResult.success(customerService.getConfig());
+        return AjaxResult.success(customerService.getConfig(scene));
+    }
+
+    @PreAuthorize("@ss.hasPermi('ai:chat:list')")
+    @GetMapping("/scenes")
+    public AjaxResult scenes()
+    {
+        return AjaxResult.success(customerService.listPublicScenes());
     }
 
     @PreAuthorize("@ss.hasPermi('ai:chat:list')")
@@ -51,8 +59,9 @@ public class CustomerServiceController extends BaseController
 
     @PreAuthorize("@ss.hasPermi('ai:chat:chat')")
     @PostMapping("/chat")
-    public AjaxResult chat(@RequestBody CustomerServiceChatRequest request)
+    public AjaxResult chat(@RequestParam(defaultValue = "admin") String scene,
+            @RequestBody CustomerServiceChatRequest request)
     {
-        return AjaxResult.success(customerService.chat(request));
+        return AjaxResult.success(customerService.chat(scene, request));
     }
 }

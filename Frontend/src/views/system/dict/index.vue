@@ -282,7 +282,7 @@ function handleViewData(row: SysDictType) {
 
 /** 字典数据列表页面 */
 function handleDataList(row: SysDictType) {
-  proxy.$tab.openPage("字典数据", '/system/dict-data/index/' + row.dictId)
+  proxy.$tab.openPage("字典数据", '/admin/system/dict-data/index/' + row.dictId)
 }
 
 /** 修改按钮操作 */

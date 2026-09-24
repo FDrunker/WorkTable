@@ -10,5 +10,9 @@ const router = useRouter()
 const { params, query } = route
 const { path } = params
 
-router.replace({ path: '/' + (path as string), query })
+const targetPath = String(path || '')
+router.replace({
+  path: targetPath.startsWith('admin/') ? `/${targetPath}` : `/admin/${targetPath}`,
+  query
+})
 </script>

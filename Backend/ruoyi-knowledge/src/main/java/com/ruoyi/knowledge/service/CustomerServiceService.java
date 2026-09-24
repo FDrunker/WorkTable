@@ -29,8 +29,10 @@ import com.ruoyi.knowledge.domain.CustomerServiceConfigRequest;
 import com.ruoyi.knowledge.domain.CustomerServiceConfigView;
 import com.ruoyi.knowledge.domain.CustomerServiceOptions;
 import com.ruoyi.knowledge.domain.CustomerServiceSource;
+import com.ruoyi.knowledge.domain.PublicChatSceneView;
 import com.ruoyi.knowledge.mapper.CustomerServiceConfigMapper;
 import com.ruoyi.knowledge.model.ModelType;
+import com.ruoyi.knowledge.model.PublicChatScene;
 
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
@@ -53,6 +55,10 @@ public class CustomerServiceService
 
     private static final int MAX_CONTEXT_LENGTH = 24000;
 
+    private static final int MAX_TITLE_LENGTH = 64;
+
+    private static final int MAX_WELCOME_LENGTH = 500;
+
     private final CustomerServiceConfigMapper configMapper;
 
     private final AiModelService modelService;
@@ -73,9 +79,21 @@ public class CustomerServiceService
         this.objectMapper = objectMapper;
     }
 
-    public CustomerServiceConfigView getConfig()
+    public CustomerServiceConfigView getConfig(String scene)
     {
-        return toView(configMapper.selectConfig());
+        PublicChatScene chatScene = PublicChatScene.normalize(scene);
+        return toView(configMapper.selectConfig(chatScene.getCode()), chatScene);
+    }
+
+    public List<PublicChatSceneView> listPublicScenes()
+    {
+        return PublicChatScene.publicScenes().stream()
+                .map(scene -> toView(configMapper.selectConfig(scene.getCode()), scene))
+                .map(config -> new PublicChatSceneView(
+                        config.scene(),
+                        config.title(),
+                        config.welcomeMessage()))
+                .toList();
     }
 
     public CustomerServiceOptions options()
@@ -93,6 +111,7 @@ public class CustomerServiceService
         {
             throw new ServiceException("AI对话设置不能为空");
         }
+        PublicChatScene scene = PublicChatScene.normalize(request.scene());
         List<String> collectionIds = normalizeCollectionIds(request.collectionIds());
         int topK = normalizeTopK(request.topK());
         validateModel(request.chatModelId(), ModelType.CHAT, "对话模型");
@@ -100,6 +119,9 @@ public class CustomerServiceService
         validateCollections(collectionIds);
 
         CustomerServiceConfig config = new CustomerServiceConfig();
+        config.setScene(scene.getCode());
+        config.setTitle(normalizeTitle(request.title(), scene));
+        config.setWelcomeMessage(normalizeWelcomeMessage(request.welcomeMessage(), scene));
         config.setChatModelId(request.chatModelId());
         config.setEmbeddingModelId(request.embeddingModelId());
         config.setCollectionIdsJson(writeCollectionIds(collectionIds));
@@ -108,7 +130,7 @@ public class CustomerServiceService
         config.setCreateBy(username);
         config.setUpdateBy(username);
 
-        CustomerServiceConfig existing = configMapper.selectConfig();
+        CustomerServiceConfig existing = configMapper.selectConfig(scene.getCode());
         if (existing == null)
         {
             configMapper.insertConfig(config);
@@ -118,13 +140,18 @@ public class CustomerServiceService
             config.setConfigId(existing.getConfigId());
             configMapper.updateConfig(config);
         }
-        return getConfig();
+        return getConfig(scene.getCode());
     }
 
     public CustomerServiceChatResponse chat(CustomerServiceChatRequest request)
     {
+        return chat(PublicChatScene.ADMIN.getCode(), request);
+    }
+
+    public CustomerServiceChatResponse chat(String scene, CustomerServiceChatRequest request)
+    {
         String question = normalizeQuestion(request);
-        CustomerServiceConfig config = requireRuntimeConfig();
+        CustomerServiceConfig config = requireRuntimeConfig(PublicChatScene.normalize(scene).getCode());
         List<String> collectionIds = readCollectionIds(config.getCollectionIdsJson());
         AiModelConfig chatConfig = requireModel(config.getChatModelId(), ModelType.CHAT, "对话模型");
         AiModelConfig embeddingConfig = requireModel(config.getEmbeddingModelId(), ModelType.EMBEDDING, "向量模型");
@@ -166,9 +193,9 @@ public class CustomerServiceService
                 needsClarification, sources);
     }
 
-    private CustomerServiceConfig requireRuntimeConfig()
+    private CustomerServiceConfig requireRuntimeConfig(String scene)
     {
-        CustomerServiceConfig config = configMapper.selectConfig();
+        CustomerServiceConfig config = configMapper.selectConfig(scene);
         if (config == null || config.getChatModelId() == null || config.getEmbeddingModelId() == null
                 || StringUtils.isBlank(config.getCollectionIdsJson()))
         {
@@ -431,21 +458,47 @@ public class CustomerServiceService
         return normalized.subList(fromIndex, normalized.size());
     }
 
-    private CustomerServiceConfigView toView(CustomerServiceConfig config)
+    private CustomerServiceConfigView toView(CustomerServiceConfig config, PublicChatScene scene)
     {
         if (config == null)
         {
-            return new CustomerServiceConfigView(null, null, null, List.of(),
+            return new CustomerServiceConfigView(null, scene.getCode(), scene.getDefaultTitle(),
+                    scene.getDefaultWelcomeMessage(), null, null, List.of(),
                     DEFAULT_TOP_K, "1", null);
         }
         return new CustomerServiceConfigView(
                 config.getConfigId(),
+                scene.getCode(),
+                StringUtils.isBlank(config.getTitle()) ? scene.getDefaultTitle() : config.getTitle(),
+                StringUtils.isBlank(config.getWelcomeMessage())
+                        ? scene.getDefaultWelcomeMessage() : config.getWelcomeMessage(),
                 config.getChatModelId(),
                 config.getEmbeddingModelId(),
                 readCollectionIds(config.getCollectionIdsJson()),
                 normalizeTopK(config.getTopK()),
                 StringUtils.isBlank(config.getEnabled()) ? "1" : config.getEnabled(),
                 config.getUpdateTime());
+    }
+
+    private String normalizeTitle(String title, PublicChatScene scene)
+    {
+        String value = StringUtils.isBlank(title) ? scene.getDefaultTitle() : title.trim();
+        if (value.length() > MAX_TITLE_LENGTH)
+        {
+            throw new ServiceException("页面标题不能超过 " + MAX_TITLE_LENGTH + " 个字符");
+        }
+        return value;
+    }
+
+    private String normalizeWelcomeMessage(String welcomeMessage, PublicChatScene scene)
+    {
+        String value = StringUtils.isBlank(welcomeMessage)
+                ? scene.getDefaultWelcomeMessage() : welcomeMessage.trim();
+        if (value.length() > MAX_WELCOME_LENGTH)
+        {
+            throw new ServiceException("欢迎语不能超过 " + MAX_WELCOME_LENGTH + " 个字符");
+        }
+        return value;
     }
 
     private void validateModel(Long modelId, ModelType expectedType, String label)

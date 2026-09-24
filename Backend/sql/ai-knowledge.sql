@@ -5,6 +5,8 @@
 
 drop table if exists ai_knowledge_task;
 drop table if exists ai_knowledge_document;
+drop table if exists ai_chat_message;
+drop table if exists ai_chat_conversation;
 drop table if exists ai_customer_service_config;
 drop table if exists ai_model_config;
 
@@ -85,6 +87,9 @@ create table ai_knowledge_task (
 
 create table ai_customer_service_config (
   config_id          bigint        not null auto_increment comment 'AI对话配置ID',
+  scene              varchar(32)   not null default 'admin' comment '场景标识',
+  title              varchar(64)   not null default ''      comment '页面标题',
+  welcome_message    varchar(500)  not null default ''      comment '欢迎语',
   chat_model_id      bigint        default null            comment '对话模型ID',
   embedding_model_id bigint        default null            comment '检索向量模型ID',
   collection_ids     text                                  comment '知识库集合ID JSON 数组',
@@ -95,13 +100,41 @@ create table ai_customer_service_config (
   update_by          varchar(64)   default ''              comment '更新者',
   update_time        datetime                              comment '更新时间',
   remark             varchar(500)  default null            comment '备注',
-  primary key (config_id)
+  primary key (config_id),
+  unique key uk_ai_customer_service_scene (scene)
 ) engine=innodb auto_increment=1 comment='AI对话配置表';
 
 insert into ai_customer_service_config
-  (config_id, top_k, enabled, create_by, create_time)
+  (config_id, scene, title, welcome_message, top_k, enabled, create_by, create_time)
 values
-  (1, 5, '1', 'admin', sysdate());
+  (1, 'admin', '后台 AI 对话', '你好，有什么可以帮你的？', 5, '1', 'admin', sysdate()),
+  (2, 'personal-info', '个人信息', '你好，我可以帮你整理和分析个人信息。', 5, '1', 'admin', sysdate()),
+  (3, 'customer-service', '智能客服', '你好，我是智能客服，请告诉我你需要咨询的问题。', 5, '1', 'admin', sysdate());
+
+create table ai_chat_conversation (
+  conversation_id varchar(64)  not null                comment '会话ID',
+  visitor_id      varchar(64)  not null                comment '匿名访客ID',
+  scene           varchar(32)  not null                comment '对话场景',
+  title           varchar(255) not null default '新对话' comment '会话标题',
+  create_time     datetime     not null                comment '创建时间',
+  update_time     datetime     not null                comment '更新时间',
+  primary key (conversation_id),
+  key idx_ai_chat_conversation_visitor (visitor_id, scene, update_time)
+) engine=innodb comment='公开AI对话会话表';
+
+create table ai_chat_message (
+  message_id          bigint       not null auto_increment comment '消息ID',
+  conversation_id     varchar(64)  not null                comment '会话ID',
+  role                varchar(16)  not null                comment '角色 user/assistant',
+  content             longtext     not null                comment '消息内容',
+  intent              varchar(128) default null            comment '识别意图',
+  intent_confidence   double       default null            comment '意图置信度',
+  needs_clarification char(1)      not null default '0'    comment '是否需要澄清',
+  sources_json        longtext     default null            comment '知识来源 JSON',
+  create_time         datetime     not null                comment '创建时间',
+  primary key (message_id),
+  key idx_ai_chat_message_conversation (conversation_id, message_id)
+) engine=innodb auto_increment=1 comment='公开AI对话消息表';
 
 -- ----------------------------
 -- 菜单与权限

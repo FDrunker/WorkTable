@@ -291,7 +291,7 @@ function handleEditTable(row?: GenTable) {
   const tableId = row?.tableId || ids.value[0]
   const tableName = row?.tableName || tableNames.value[0]
   const params = { pageNum: queryParams.value.pageNum }
-  proxy.$tab.openPage("修改[" + tableName + "]生成配置", '/tool/gen-edit/index/' + tableId, params)
+  proxy.$tab.openPage("修改[" + tableName + "]生成配置", '/admin/tool/gen-edit/index/' + tableId, params)
 }
 
 /** 删除按钮操作 */

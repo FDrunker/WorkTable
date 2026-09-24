@@ -3,6 +3,9 @@ import type { ChromaCollection } from './collection'
 
 export interface CustomerServiceConfig {
   configId?: number
+  scene?: string
+  title?: string
+  welcomeMessage?: string
   chatModelId?: number
   embeddingModelId?: number
   collectionIds: string[]
@@ -15,6 +18,12 @@ export interface CustomerServiceOptions {
   chatModels: AiModelConfig[]
   embeddingModels: AiModelConfig[]
   collections: ChromaCollection[]
+}
+
+export interface CustomerServiceScene {
+  scene: string
+  title: string
+  welcomeMessage: string
 }
 
 export interface CustomerServiceChatTurn {

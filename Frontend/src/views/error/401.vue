@@ -12,7 +12,7 @@
         <h6>对不起，您没有访问权限，请不要进行非法操作！您可以返回主页面</h6>
         <ul class="list-unstyled">
           <li class="link-type">
-            <router-link to="/">
+            <router-link to="/admin/index">
               回首页
             </router-link>
           </li>
@@ -34,7 +34,7 @@ const errGif = ref<string>(errImage + "?" + +new Date())
 
 function back(): void {
   if (proxy.$route.query.noGoBack) {
-    proxy.$router.push({ path: "/" })
+    proxy.$router.push({ path: "/admin/index" })
   } else {
     proxy.$router.go(-1)
   }

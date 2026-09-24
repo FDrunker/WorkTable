@@ -1,6 +1,6 @@
 # WorkTable
 
-后台管理平台，基于 **RuoYi-Vue 3.9.2**（若依）前后端分离脚手架搭建，采用「Backend + Frontend」双目录单仓库结构。
+AI 对话与后台管理平台，基于 **RuoYi-Vue 3.9.2**（若依）前后端分离脚手架搭建，采用「Backend + Frontend」双目录单仓库结构。
 
 ## 接手文档
 
@@ -26,7 +26,7 @@ WorkTable/
 │   └── pom.xml                  # 聚合父 POM（groupId: com.ruoyi, version: 3.9.2）
 └── Frontend/                    # 前端：Vue 3 + Vite + Element Plus
     ├── src/api/                 # 接口封装
-    ├── src/views/               # 页面：system / monitor / tool / wechat / knowledge
+    ├── src/views/               # 页面：public / system / monitor / tool / wechat / knowledge
     ├── src/router/              # 路由
     ├── src/store/               # Pinia 状态管理
     ├── src/layout/              # 布局与导航
@@ -92,6 +92,10 @@ npm run build:prod   # 生产构建
 
 开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8090`（见 `vite.config.ts`）。
 
+- 免登录主页：`http://localhost/` 或 `http://localhost/personal-info`
+- 免登录智能客服：`http://localhost/customer-service`
+- 后台管理：`http://localhost/admin/login`
+
 ## 知识库与模型管理（ruoyi-knowledge）
 
 - **入口**：顶级菜单包含「知识库管理」「模型管理」和「AI对话」。
@@ -105,6 +109,7 @@ npm run build:prod   # 生产构建
 - **密钥安全**：API Key 使用 AES-GCM 加密后存入数据库，查询接口只返回掩码。主密钥配置为 `knowledge.encryption-key`，生产环境应通过 `WORKTABLE_KNOWLEDGE_KEY` 环境变量覆盖。
 - **本地文件**：上传的 Markdown 先写入 `knowledge.storage-path`，成功写入 Chroma 后删除暂存文件；原文正文保存在 MySQL 中，供后续编辑和重建使用。
 - **AI对话**：顶级菜单新增「AI对话」。设置中可选择对话模型、向量模型、多个知识库集合和 TopK（1-20）。问答时先识别用户意图，再按配置检索知识片段；知识不足或问题含义不明确时，会返回澄清问题而不是猜测答案。回答会附带本次检索到的知识来源。
+- **公开 AI 对话**：主页顶部可切换「个人信息」和「智能客服」，两个场景都支持新建对话和持久化历史记录。后台 AI 对话页可分别配置每个场景的页面标题、欢迎语、模型、知识库、TopK 和启停状态。
 
 首次启用该模块需要执行：
 
@@ -128,6 +133,12 @@ mysql -uroot -p work_table < Backend/sql/customer-service.sql
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/ai-chat-menu.sql
+```
+
+为现有数据库启用免登录 AI 对话和会话记录，需要执行：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/public-ai-chat.sql
 ```
 
 如果要同步最新的菜单层级调整，将知识库管理和模型管理提升为顶级菜单，并删除「若依官网」菜单，需要执行：

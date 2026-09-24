@@ -6,6 +6,9 @@ import java.util.List;
  * AI对话设置保存请求。
  */
 public record CustomerServiceConfigRequest(
+        String scene,
+        String title,
+        String welcomeMessage,
         Long chatModelId,
         Long embeddingModelId,
         List<String> collectionIds,

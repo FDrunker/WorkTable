@@ -56,7 +56,7 @@ Vite 只配置了开发环境 `/dev-api` 代理。生产环境必须由 Nginx、
 | `src/permission.ts` | 全局路由守卫、登录校验、动态路由生成 |
 | `src/router/index.ts` | 静态路由、隐藏路由和固定动态路由定义 |
 | `src/layout/` | 后台框架布局、侧边栏、顶栏、标签页、通知和主题设置 |
-| `src/views/` | 页面，按 `system`、`monitor`、`tool`、`knowledge`、`wechat` 分域 |
+| `src/views/` | 页面，按 `public`、`system`、`monitor`、`tool`、`knowledge`、`wechat` 分域 |
 | `src/api/` | 后端接口封装，只处理请求参数和返回类型 |
 | `src/types/api/` | API 请求、响应和领域类型 |
 | `src/store/modules/` | Pinia 状态：用户、权限、字典、布局、锁屏、标签页 |
@@ -83,10 +83,11 @@ Vite 只配置了开发环境 `/dev-api` 代理。生产环境必须由 Nginx、
 
 `src/router/index.ts` 中有两类路由：
 
-- `constantRoutes`：登录、注册、404、首页、个人中心等所有用户可见或固定存在的基础路由。
-- `dynamicRoutes`：需要特定权限才注册的详情页或分配页，例如用户分配角色、角色分配用户、字典数据、任务日志、代码生成编辑页。
+- 公开路由：`/`、`/personal-info`、`/customer-service`，不需要登录。
+- `constantRoutes`：`/admin/login`、`/admin/register`、`/admin/index`、`/admin/user/profile` 等后台基础路由。
+- `dynamicRoutes`：需要特定权限才注册的后台详情页或分配页，例如用户分配角色、角色分配用户、字典数据、任务日志、代码生成编辑页。
 
-业务菜单本身来自后端 `sys_menu` 表。`src/store/modules/permission.ts` 会根据菜单中的 `component` 字符串匹配 `src/views/**/*.vue`，并转换 `Layout`、`ParentView`、`InnerLink` 等特殊组件。
+业务菜单本身来自后端 `sys_menu` 表。`src/store/modules/permission.ts` 会根据菜单中的 `component` 字符串匹配 `src/views/**/*.vue`，并转换 `Layout`、`ParentView`、`InnerLink` 等特殊组件。数据库菜单路径保持原值，前端通过 `src/utils/admin-route.ts` 在注册路由时统一加上 `/admin`，同时转换 `meta.activeMenu`。
 
 按钮权限有两层：
 
@@ -170,11 +171,22 @@ Vite 只配置了开发环境 `/dev-api` 代理。生产环境必须由 Nginx、
 
 AI 对话页面的关键行为：
 
-- 首次进入同时加载配置和可选项；未配置且有编辑权限时自动打开设置。
-- 设置包括 chat 模型、embedding 模型、多个知识库和 TopK 1 到 20。
+- 页面顶部可切换「后台 AI 对话」「个人信息」「智能客服」三个配置场景。
+- 设置包括页面标题、欢迎语、chat 模型、embedding 模型、多个知识库和 TopK 1 到 20。
 - 前端只保留最近 10 轮对话作为历史请求。
 - 回答可以显示意图、置信度、是否请求澄清和实际使用的知识来源。
 - 问答接口超时为 180 秒，适合模型和向量检索的长耗时请求。
+
+### 免登录 AI 主页
+
+公共页面使用共享组件 `src/views/public/chat.vue`，接口位于 `src/api/publicChat.ts`，类型位于 `src/types/api/publicChat.ts`。
+
+- `/` 和 `/personal-info` 指向「个人信息」，`/customer-service` 指向「智能客服」。
+- 顶部中央的场景选项来自 `/public/ai-chat/scenes`，后续新增公开场景时可以复用同一个聊天组件。
+- 浏览器在 `localStorage` 中生成并保存匿名 `visitorId`；会话列表和消息由后端按 `visitorId + scene` 隔离。
+- “新建对话”仅在首次发送时创建数据库会话，避免产生空记录。
+- 左侧历史栏支持打开、刷新和删除会话；移动端使用抽屉展示历史栏。
+- 没有任何消息时显示配置的标题和欢迎语；模型、知识库或启停配置不完整时禁用输入框。
 
 ### 微信聊天归档
 
@@ -242,6 +254,8 @@ npx vue-tsc --noEmit
 
 当前自动化测试很少，`tests/request-content-type.test.mjs` 主要覆盖 FormData 请求头修正。对知识库任务轮询、微信导入、权限逻辑或请求拦截器做改动时，应增加针对纯函数或组合逻辑的测试。
 
+`tests/admin-route.test.mjs` 已覆盖后台路径前缀和 `meta.activeMenu` 的不可变转换。公共对话或后台场景改动后，至少应运行 `npm test` 与 `npm run build:prod`。
+
 ## 12. 常见陷阱
 
 - 不要直接改 `src/router/index.ts` 来新增普通业务菜单；普通菜单应由后端 `sys_menu` 驱动。
@@ -265,3 +279,4 @@ npx vue-tsc --noEmit
 7. `Frontend/src/views/knowledge/collection/index.vue`
 8. `Frontend/src/views/knowledge/customerService/index.vue`
 9. `Frontend/src/views/wechat/chat/index.vue`
+10. `Frontend/src/views/public/chat.vue`

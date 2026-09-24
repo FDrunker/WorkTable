@@ -34,7 +34,7 @@ function getBreadcrumb(): void {
   }
   // 判断是否为首页
   if (!isDashboard(matched[0])) {
-    matched = [{ path: "/index", meta: { title: "首页" } }].concat(matched)
+    matched = [{ path: "/admin/index", meta: { title: "首页" } }].concat(matched)
   }
   levelList.value = matched.filter(item => item.meta && item.meta.title && (item.meta.breadcrumb as boolean) !== false)
 }
@@ -75,7 +75,7 @@ function handleLink(item: any): void {
 
 watchEffect(() => {
   // if you go to the redirect page, do not update the breadcrumbs
-  if (route.path.startsWith('/redirect/')) {
+  if (route.path.startsWith('/admin/redirect/')) {
     return
   }
   getBreadcrumb()
