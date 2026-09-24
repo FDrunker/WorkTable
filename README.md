@@ -2,6 +2,13 @@
 
 后台管理平台，基于 **RuoYi-Vue 3.9.2**（若依）前后端分离脚手架搭建，采用「Backend + Frontend」双目录单仓库结构。
 
+## 接手文档
+
+- [前端接手说明](docs/FRONTEND_HANDOFF.md)：启动链路、路由权限、请求协议、页面模块、测试与扩展方式。
+- [后端接手说明](docs/BACKEND_HANDOFF.md)：Maven 模块、认证鉴权、数据库、知识库任务、AI 对话、微信归档与测试。
+
+文档引用校验：`node --test tests/documentation.test.mjs`。
+
 ## 目录结构
 
 ```
