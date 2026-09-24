@@ -3,7 +3,7 @@ package com.ruoyi.knowledge.domain;
 import java.util.List;
 
 /**
- * 智能客服设置选项。
+ * AI对话设置选项。
  */
 public record CustomerServiceOptions(
         List<AiModelConfig> chatModels,

@@ -3,7 +3,7 @@ package com.ruoyi.knowledge.domain;
 import java.util.List;
 
 /**
- * 智能客服提问。
+ * AI对话提问。
  */
 public record CustomerServiceChatRequest(
         String question,

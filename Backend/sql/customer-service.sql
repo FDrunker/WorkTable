@@ -1,10 +1,10 @@
 -- ----------------------------
--- 智能客服功能
+-- AI对话功能
 -- 依赖于 ai-knowledge.sql 已执行完毕
 -- ----------------------------
 
 create table if not exists ai_customer_service_config (
-  config_id          bigint        not null auto_increment comment '智能客服配置ID',
+  config_id          bigint        not null auto_increment comment 'AI对话配置ID',
   chat_model_id      bigint        default null            comment '对话模型ID',
   embedding_model_id bigint        default null            comment '检索向量模型ID',
   collection_ids     text                                  comment '知识库集合ID JSON 数组',
@@ -16,7 +16,7 @@ create table if not exists ai_customer_service_config (
   update_time        datetime                              comment '更新时间',
   remark             varchar(500)  default null            comment '备注',
   primary key (config_id)
-) engine=innodb auto_increment=1 comment='智能客服配置表';
+) engine=innodb auto_increment=1 comment='AI对话配置表';
 
 insert ignore into ai_customer_service_config
   (config_id, top_k, enabled, create_by, create_time)
@@ -26,10 +26,10 @@ values
 delete from sys_role_menu where menu_id in ('3003', '3040', '3041', '3042');
 delete from sys_menu where menu_id in ('3003', '3040', '3041', '3042');
 
-insert into sys_menu values('3003', '智能客服', '3000', '3', 'customer-service', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:customer-service:list', 'message', 'admin', sysdate(), '', null, '智能客服菜单');
-insert into sys_menu values('3040', '客服查询', '3003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:list', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3041', '客服问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:chat', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3042', '客服设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3003', 'AI对话', '0', '6', 'ai-chat', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'ai:chat:list', 'message', 'admin', sysdate(), '', null, 'AI对话菜单');
+insert into sys_menu values('3040', 'AI对话查询', '3003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:list', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3041', 'AI对话问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:chat', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3042', 'AI对话设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:edit', '#', 'admin', sysdate(), '', null, '');
 
 insert into sys_role_menu values('1', '3003');
 insert into sys_role_menu values('1', '3040');

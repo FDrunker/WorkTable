@@ -36,7 +36,7 @@ import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * 智能客服设置与知识库问答编排。
+ * AI对话设置与知识库问答编排。
  */
 @Service
 public class CustomerServiceService
@@ -91,7 +91,7 @@ public class CustomerServiceService
     {
         if (request == null)
         {
-            throw new ServiceException("智能客服设置不能为空");
+            throw new ServiceException("AI对话设置不能为空");
         }
         List<String> collectionIds = normalizeCollectionIds(request.collectionIds());
         int topK = normalizeTopK(request.topK());
@@ -172,15 +172,15 @@ public class CustomerServiceService
         if (config == null || config.getChatModelId() == null || config.getEmbeddingModelId() == null
                 || StringUtils.isBlank(config.getCollectionIdsJson()))
         {
-            throw new ServiceException("智能客服尚未完成设置");
+            throw new ServiceException("AI对话尚未完成设置");
         }
         if (!"1".equals(config.getEnabled()))
         {
-            throw new ServiceException("智能客服已停用");
+            throw new ServiceException("AI对话已停用");
         }
         if (readCollectionIds(config.getCollectionIdsJson()).isEmpty())
         {
-            throw new ServiceException("智能客服尚未选择知识库集合");
+            throw new ServiceException("AI对话尚未选择知识库集合");
         }
         return config;
     }
@@ -202,7 +202,7 @@ public class CustomerServiceService
     private IntentResult recognizeIntent(ChatModel chatModel, String question, List<CustomerServiceChatTurn> history)
     {
         String prompt = """
-                你是智能客服的意图识别器。请根据对话判断用户当前最可能的咨询意图。
+                你是AI对话的意图识别器。请根据对话判断用户当前最可能的咨询意图。
                 只输出 JSON，不要输出 Markdown 或额外说明，格式如下：
                 {"intent":"简洁的中文意图名称","confidence":0.0}
                 confidence 为 0 到 1 之间的小数。
@@ -223,7 +223,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("智能客服意图识别结果解析失败：{}", content, e);
+            log.warn("AI对话意图识别结果解析失败：{}", content, e);
             return new IntentResult("其他咨询", 0D);
         }
     }
@@ -232,7 +232,7 @@ public class CustomerServiceService
             IntentResult intent, List<ChromaSearchResult> matches)
     {
         String prompt = """
-                你是严谨的智能客服。只能依据下方知识库片段回答，不得编造知识库中没有的事实。
+                你是严谨的AI对话助手。只能依据下方知识库片段回答，不得编造知识库中没有的事实。
                 如果知识片段不足、相互冲突，或问题存在多种理解，needsClarification 必须为 true，
                 answer 只提出一个简短、明确的澄清问题，不要猜测答案。
                 如果信息充分，needsClarification 为 false，answer 使用简洁中文直接回答用户。
@@ -260,7 +260,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("智能客服回答结果解析失败，使用原始文本：{}", content, e);
+            log.warn("AI对话回答结果解析失败，使用原始文本：{}", content, e);
             return new AnswerResult(content, false, "", List.of());
         }
     }
@@ -305,7 +305,7 @@ public class CustomerServiceService
                 {
                     firstError = e;
                 }
-                log.warn("智能客服检索集合 {} 失败", collectionId, e);
+                log.warn("AI对话检索集合 {} 失败", collectionId, e);
             }
         }
         if (allMatches.isEmpty() && firstError != null && failedCollections == collectionIds.size())
@@ -331,7 +331,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("读取智能客服集合名称失败", e);
+            log.warn("读取AI对话集合名称失败", e);
         }
         List<CustomerServiceSource> sources = new ArrayList<>(matches.size());
         for (ChromaSearchResult match : matches)
@@ -543,7 +543,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("解析智能客服知识库集合配置失败：{}", json, e);
+            log.warn("解析AI对话知识库集合配置失败：{}", json, e);
             return List.of();
         }
     }

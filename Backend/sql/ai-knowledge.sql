@@ -84,7 +84,7 @@ create table ai_knowledge_task (
 ) engine=innodb auto_increment=1 comment='知识库异步任务表';
 
 create table ai_customer_service_config (
-  config_id          bigint        not null auto_increment comment '智能客服配置ID',
+  config_id          bigint        not null auto_increment comment 'AI对话配置ID',
   chat_model_id      bigint        default null            comment '对话模型ID',
   embedding_model_id bigint        default null            comment '检索向量模型ID',
   collection_ids     text                                  comment '知识库集合ID JSON 数组',
@@ -96,7 +96,7 @@ create table ai_customer_service_config (
   update_time        datetime                              comment '更新时间',
   remark             varchar(500)  default null            comment '备注',
   primary key (config_id)
-) engine=innodb auto_increment=1 comment='智能客服配置表';
+) engine=innodb auto_increment=1 comment='AI对话配置表';
 
 insert into ai_customer_service_config
   (config_id, top_k, enabled, create_by, create_time)
@@ -112,7 +112,7 @@ delete from sys_menu where menu_id between 3000 and 3099;
 insert into sys_menu values('3000', '知识库管理', '0', '5', 'knowledge', null, '', '', 1, 0, 'M', '0', '0', '', 'notebook-1', 'admin', sysdate(), '', null, '知识库管理目录');
 insert into sys_menu values('3001', '向量集合', '3000', '1', 'collection', 'knowledge/collection/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:collection:list', 'collection', 'admin', sysdate(), '', null, 'Chroma 集合管理菜单');
 insert into sys_menu values('3002', '模型管理', '3000', '2', 'model', 'knowledge/model/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:model:list', 'cpu', 'admin', sysdate(), '', null, 'AI 模型配置菜单');
-insert into sys_menu values('3003', '智能客服', '3000', '3', 'customer-service', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:customer-service:list', 'message', 'admin', sysdate(), '', null, '智能客服菜单');
+insert into sys_menu values('3003', 'AI对话', '0', '6', 'ai-chat', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'ai:chat:list', 'message', 'admin', sysdate(), '', null, 'AI对话菜单');
 
 insert into sys_menu values('3010', '集合查询', '3001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3011', '文档查询', '3001', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:document:list', '#', 'admin', sysdate(), '', null, '');
@@ -132,9 +132,9 @@ insert into sys_menu values('3032', '模型修改', '3002', '3', '', '', '', '',
 insert into sys_menu values('3033', '模型删除', '3002', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:remove', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3034', '连通性测试', '3002', '5', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:test', '#', 'admin', sysdate(), '', null, '');
 
-insert into sys_menu values('3040', '客服查询', '3003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:list', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3041', '客服问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:chat', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3042', '客服设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:customer-service:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3040', 'AI对话查询', '3003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:list', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3041', 'AI对话问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:chat', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3042', 'AI对话设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:edit', '#', 'admin', sysdate(), '', null, '');
 
 insert into sys_role_menu values('1', '3000');
 insert into sys_role_menu values('1', '3001');

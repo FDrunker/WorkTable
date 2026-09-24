@@ -9,14 +9,14 @@ import type {
 
 export function getCustomerServiceConfig(): Promise<AjaxResult<CustomerServiceConfig>> {
   return request({
-    url: '/knowledge/customer-service/config',
+    url: '/knowledge/ai-chat/config',
     method: 'get'
   })
 }
 
 export function getCustomerServiceOptions(): Promise<AjaxResult<CustomerServiceOptions>> {
   return request({
-    url: '/knowledge/customer-service/options',
+    url: '/knowledge/ai-chat/options',
     method: 'get'
   })
 }
@@ -25,7 +25,7 @@ export function updateCustomerServiceConfig(
   data: CustomerServiceConfig
 ): Promise<AjaxResult<CustomerServiceConfig>> {
   return request({
-    url: '/knowledge/customer-service/config',
+    url: '/knowledge/ai-chat/config',
     method: 'put',
     data
   })
@@ -35,7 +35,7 @@ export function chatWithCustomerService(
   data: CustomerServiceChatRequest
 ): Promise<AjaxResult<CustomerServiceChatResponse>> {
   return request({
-    url: '/knowledge/customer-service/chat',
+    url: '/knowledge/ai-chat/chat',
     method: 'post',
     data,
     timeout: 180000

@@ -17,7 +17,7 @@ import com.ruoyi.knowledge.domain.CustomerServiceConfigRequest;
 import com.ruoyi.knowledge.service.CustomerServiceService;
 
 @RestController
-@RequestMapping("/knowledge/customer-service")
+@RequestMapping("/knowledge/ai-chat")
 public class CustomerServiceController extends BaseController
 {
     private final CustomerServiceService customerService;
@@ -27,29 +27,29 @@ public class CustomerServiceController extends BaseController
         this.customerService = customerService;
     }
 
-    @PreAuthorize("@ss.hasPermi('knowledge:customer-service:list')")
+    @PreAuthorize("@ss.hasPermi('ai:chat:list')")
     @GetMapping("/config")
     public AjaxResult getConfig()
     {
         return AjaxResult.success(customerService.getConfig());
     }
 
-    @PreAuthorize("@ss.hasPermi('knowledge:customer-service:list')")
+    @PreAuthorize("@ss.hasPermi('ai:chat:list')")
     @GetMapping("/options")
     public AjaxResult options()
     {
         return AjaxResult.success(customerService.options());
     }
 
-    @PreAuthorize("@ss.hasPermi('knowledge:customer-service:edit')")
-    @Log(title = "智能客服设置", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('ai:chat:edit')")
+    @Log(title = "AI对话设置", businessType = BusinessType.UPDATE)
     @PutMapping("/config")
     public AjaxResult saveConfig(@RequestBody CustomerServiceConfigRequest request)
     {
         return AjaxResult.success(customerService.saveConfig(request, getUsername()));
     }
 
-    @PreAuthorize("@ss.hasPermi('knowledge:customer-service:chat')")
+    @PreAuthorize("@ss.hasPermi('ai:chat:chat')")
     @PostMapping("/chat")
     public AjaxResult chat(@RequestBody CustomerServiceChatRequest request)
     {

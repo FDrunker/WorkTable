@@ -3,7 +3,7 @@ package com.ruoyi.knowledge.domain;
 import com.ruoyi.common.core.domain.BaseEntity;
 
 /**
- * 智能客服运行配置。
+ * AI对话运行配置。
  */
 public class CustomerServiceConfig extends BaseEntity
 {

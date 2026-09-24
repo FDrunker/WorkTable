@@ -8,7 +8,7 @@
           </div>
           <div class="service-heading">
             <div class="service-name-row">
-              <h2>智能客服</h2>
+              <h2>AI对话</h2>
               <span class="status-dot" :class="{ online: isReady }"></span>
               <span class="status-text">{{ statusText }}</span>
             </div>
@@ -25,7 +25,7 @@
         <el-button
           icon="Setting"
           :disabled="!canEdit"
-          v-hasPermi="['knowledge:customer-service:edit']"
+          v-hasPermi="['ai:chat:edit']"
           @click="openSettings"
         >
           设置
@@ -38,7 +38,7 @@
         type="warning"
         :closable="false"
         show-icon
-        :title="isConfigured ? '智能客服已停用' : '请先完成智能客服设置'"
+        :title="isConfigured ? 'AI对话已停用' : '请先完成AI对话设置'"
       />
 
       <main ref="messageListRef" class="message-list" v-loading="loading">
@@ -142,7 +142,7 @@
       </footer>
     </section>
 
-    <el-dialog v-model="settingsOpen" title="智能客服设置" width="640px" append-to-body>
+    <el-dialog v-model="settingsOpen" title="AI对话设置" width="640px" append-to-body>
       <el-form
         ref="settingsRef"
         :model="settingsForm"
@@ -206,7 +206,7 @@
   </div>
 </template>
 
-<script setup lang="ts" name="CustomerService">
+<script setup lang="ts" name="AiChat">
 import type {
   AiModelConfig,
   CustomerServiceChatResponse,
@@ -263,7 +263,7 @@ const settingsRules = {
   topK: [{ required: true, message: '请输入 TopK', trigger: 'change' }]
 }
 
-const canEdit = computed(() => proxy.$auth.hasPermi('knowledge:customer-service:edit'))
+const canEdit = computed(() => proxy.$auth.hasPermi('ai:chat:edit'))
 const isConfigured = computed(
   () =>
     config.value.chatModelId !== undefined &&
@@ -329,12 +329,12 @@ async function sendMessage() {
   if (!isReady.value) {
     if (canEdit.value) {
       if (isConfigured.value) {
-        proxy.$modal.msgError('智能客服已停用')
+        proxy.$modal.msgError('AI对话已停用')
       } else {
         openSettings()
       }
     } else {
-      proxy.$modal.msgError(isConfigured.value ? '智能客服已停用' : '智能客服尚未完成设置')
+      proxy.$modal.msgError(isConfigured.value ? 'AI对话已停用' : 'AI对话尚未完成设置')
     }
     return
   }

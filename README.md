@@ -97,7 +97,7 @@ npm run build:prod   # 生产构建
 - **模型管理**：支持 OpenAI / ChatGPT、DeepSeek、Ollama，以及 TypeSafe Jev 自定义适配器。模型具有 `embedding`、`chat`、`system-one` 类型、启用状态、默认标记和连通性测试结果。
 - **密钥安全**：API Key 使用 AES-GCM 加密后存入数据库，查询接口只返回掩码。主密钥配置为 `knowledge.encryption-key`，生产环境应通过 `WORKTABLE_KNOWLEDGE_KEY` 环境变量覆盖。
 - **本地文件**：上传的 Markdown 先写入 `knowledge.storage-path`，成功写入 Chroma 后删除暂存文件；原文正文保存在 MySQL 中，供后续编辑和重建使用。
-- **智能客服**：一级菜单「知识库管理」下新增「智能客服」。设置中可选择对话模型、向量模型、多个知识库集合和 TopK（1-20）。问答时先识别用户意图，再按配置检索知识片段；知识不足或问题含义不明确时，会返回澄清问题而不是猜测答案。回答会附带本次检索到的知识来源。
+- **AI对话**：顶级菜单新增「AI对话」。设置中可选择对话模型、向量模型、多个知识库集合和 TopK（1-20）。问答时先识别用户意图，再按配置检索知识片段；知识不足或问题含义不明确时，会返回澄清问题而不是猜测答案。回答会附带本次检索到的知识来源。
 
 首次启用该模块需要执行：
 
@@ -111,10 +111,16 @@ mysql -uroot -p work_table < Backend/sql/ai-knowledge.sql
 mysql -uroot -p work_table < Backend/sql/ai-knowledge-collection-management.sql
 ```
 
-已经执行过旧版 `ai-knowledge.sql` 的数据库，还需要执行智能客服迁移：
+已经执行过旧版 `ai-knowledge.sql` 的数据库，还需要执行 AI对话迁移：
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/customer-service.sql
+```
+
+如果已经执行过旧版 `customer-service.sql`，只需执行菜单升级脚本，将菜单改名为「AI对话」并提升为顶级菜单：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/ai-chat-menu.sql
 ```
 
 默认 Chroma 配置为：

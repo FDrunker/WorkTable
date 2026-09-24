@@ -4,7 +4,7 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * 智能客服设置视图。
+ * AI对话设置视图。
  */
 public record CustomerServiceConfigView(
         Long configId,

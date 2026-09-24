@@ -1,7 +1,7 @@
 package com.ruoyi.knowledge.domain;
 
 /**
- * 智能客服回答引用的知识片段。
+ * AI对话回答引用的知识片段。
  */
 public record CustomerServiceSource(
         String id,
