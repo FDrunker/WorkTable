@@ -58,7 +58,7 @@ public class KnowledgeCollectionController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('knowledge:collection:add')")
-    @Log(title = "知识库集合", businessType = BusinessType.INSERT)
+    @Log(title = "知识库", businessType = BusinessType.INSERT)
     @PostMapping("/collection")
     public AjaxResult createCollection(@RequestBody CollectionCreateRequest request)
     {
@@ -66,20 +66,20 @@ public class KnowledgeCollectionController extends BaseController
     }
 
     @PreAuthorize("@ss.hasPermi('knowledge:collection:remove')")
-    @Log(title = "知识库集合", businessType = BusinessType.DELETE)
+    @Log(title = "知识库", businessType = BusinessType.DELETE)
     @DeleteMapping("/collection")
     public AjaxResult removeCollections(@RequestBody CollectionDeleteRequest request)
     {
         List<String> collectionIds = request.getCollectionIds();
         if (collectionIds == null || collectionIds.isEmpty())
         {
-            return AjaxResult.error("请选择要删除的集合");
+            return AjaxResult.error("请选择要删除的知识库");
         }
         for (String collectionId : collectionIds)
         {
             if (taskService.hasActiveTasks(collectionId))
             {
-                return AjaxResult.error("集合仍存在运行中的任务，无法删除");
+                return AjaxResult.error("知识库仍存在运行中的任务，无法删除");
             }
         }
         for (String collectionId : collectionIds)

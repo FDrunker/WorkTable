@@ -22,7 +22,7 @@ import com.ruoyi.knowledge.domain.ChromaSearchResult;
 import com.ruoyi.knowledge.domain.CollectionView;
 
 /**
- * 基于 Spring AI ChromaApi 的集合访问层。
+ * 基于 Spring AI ChromaApi 的知识库访问层。
  */
 @Service
 public class ChromaCollectionService
@@ -68,20 +68,20 @@ public class ChromaCollectionService
     {
         if (StringUtils.isBlank(name))
         {
-            throw new ServiceException("集合名称不能为空");
+            throw new ServiceException("知识库名称不能为空");
         }
         String trimmedName = name.trim();
         boolean exists = listCollections(null).stream()
                 .anyMatch(collection -> trimmedName.equals(collection.name()));
         if (exists)
         {
-            throw new ServiceException("集合名称已存在");
+            throw new ServiceException("知识库名称已存在");
         }
         ChromaApi.Collection collection = chromaApi.createCollection(tenant(), database(),
                 new ChromaApi.CreateCollectionRequest(trimmedName));
         if (collection == null)
         {
-            throw new ServiceException("创建集合失败");
+            throw new ServiceException("创建知识库失败");
         }
         return new CollectionView(collection.id(), collection.name(), 0L,
                 collection.metadata() == null ? Collections.emptyMap() : collection.metadata());
@@ -91,7 +91,7 @@ public class ChromaCollectionService
     {
         if (StringUtils.isBlank(collectionId))
         {
-            throw new ServiceException("集合ID不能为空");
+            throw new ServiceException("知识库ID不能为空");
         }
         chromaApi.deleteCollection(tenant(), database(), collectionId);
     }
@@ -147,7 +147,7 @@ public class ChromaCollectionService
     {
         if (StringUtils.isBlank(collectionId))
         {
-            throw new ServiceException("集合ID不能为空");
+            throw new ServiceException("知识库ID不能为空");
         }
         if (embedding == null || embedding.length == 0)
         {
@@ -191,7 +191,7 @@ public class ChromaCollectionService
         }
         if (StringUtils.isBlank(collectionId))
         {
-            throw new ServiceException("集合ID不能为空");
+            throw new ServiceException("知识库ID不能为空");
         }
         chromaApi.upsertEmbeddings(tenant(), database(), collectionId,
                 new AddEmbeddingsRequest(ids, embeddings, metadata, documents));

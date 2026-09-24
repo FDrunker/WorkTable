@@ -62,7 +62,7 @@ public class KnowledgeDocumentService
     {
         if (!StringUtils.hasText(collectionId))
         {
-            throw new ServiceException("集合ID不能为空");
+            throw new ServiceException("知识库ID不能为空");
         }
         List<ChromaRecord> records = chromaService.listRecords(collectionId);
         Map<String, List<ChromaRecord>> grouped = groupRecords(records);

@@ -180,7 +180,7 @@ public class CustomerServiceService
         }
         if (readCollectionIds(config.getCollectionIdsJson()).isEmpty())
         {
-            throw new ServiceException("AI对话尚未选择知识库集合");
+            throw new ServiceException("AI对话尚未选择知识库");
         }
         return config;
     }
@@ -305,7 +305,7 @@ public class CustomerServiceService
                 {
                     firstError = e;
                 }
-                log.warn("AI对话检索集合 {} 失败", collectionId, e);
+                log.warn("AI对话检索知识库 {} 失败", collectionId, e);
             }
         }
         if (allMatches.isEmpty() && firstError != null && failedCollections == collectionIds.size())
@@ -331,7 +331,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("读取AI对话集合名称失败", e);
+            log.warn("读取AI对话知识库名称失败", e);
         }
         List<CustomerServiceSource> sources = new ArrayList<>(matches.size());
         for (ChromaSearchResult match : matches)
@@ -482,7 +482,7 @@ public class CustomerServiceService
         {
             if (!available.contains(collectionId))
             {
-                throw new ServiceException("知识库集合不存在：" + collectionId);
+                throw new ServiceException("知识库不存在：" + collectionId);
             }
         }
     }
@@ -491,7 +491,7 @@ public class CustomerServiceService
     {
         if (collectionIds == null || collectionIds.isEmpty())
         {
-            throw new ServiceException("至少选择一个知识库集合");
+            throw new ServiceException("至少选择一个知识库");
         }
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
         for (String collectionId : collectionIds)
@@ -503,7 +503,7 @@ public class CustomerServiceService
         }
         if (normalized.isEmpty())
         {
-            throw new ServiceException("至少选择一个知识库集合");
+            throw new ServiceException("至少选择一个知识库");
         }
         return new ArrayList<>(normalized);
     }
@@ -526,7 +526,7 @@ public class CustomerServiceService
         }
         catch (JacksonException e)
         {
-            throw new ServiceException("知识库集合配置保存失败");
+            throw new ServiceException("知识库配置保存失败");
         }
     }
 
@@ -543,7 +543,7 @@ public class CustomerServiceService
         }
         catch (Exception e)
         {
-            log.warn("解析AI对话知识库集合配置失败：{}", json, e);
+            log.warn("解析AI对话知识库配置失败：{}", json, e);
             return List.of();
         }
     }

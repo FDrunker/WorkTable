@@ -1,10 +1,10 @@
 <template>
   <div class="app-container">
     <el-form :model="queryParams" ref="queryRef" :inline="true" label-width="70px">
-      <el-form-item label="集合名称" prop="name">
+      <el-form-item label="知识库名称" prop="name">
         <el-input
           v-model="queryParams.name"
-          placeholder="请输入集合名称"
+          placeholder="请输入知识库名称"
           clearable
           style="width: 240px"
           @keyup.enter="getCollections"
@@ -25,7 +25,7 @@
           @click="handleAddCollection"
           v-hasPermi="['knowledge:collection:add']"
         >
-          新增集合
+          新增知识库
         </el-button>
       </el-col>
       <el-col :span="1.5">
@@ -37,7 +37,7 @@
           @click="handleDeleteCollections()"
           v-hasPermi="['knowledge:collection:remove']"
         >
-          删除集合
+          删除知识库
         </el-button>
       </el-col>
       <right-toolbar @queryTable="getCollections" />
@@ -49,13 +49,13 @@
       @selection-change="handleCollectionSelectionChange"
     >
       <el-table-column type="selection" width="48" align="center" />
-      <el-table-column label="集合名称" prop="name" min-width="240" :show-overflow-tooltip="true">
+      <el-table-column label="知识库名称" prop="name" min-width="240" :show-overflow-tooltip="true">
         <template #default="scope">
           <el-icon class="collection-icon"><Collection /></el-icon>
           <span>{{ scope.row.name }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="集合 ID" prop="id" min-width="260" :show-overflow-tooltip="true" />
+      <el-table-column label="知识库 ID" prop="id" min-width="260" :show-overflow-tooltip="true" />
       <el-table-column label="文档数" prop="documentCount" width="100" align="center" />
       <el-table-column label="操作" width="190" align="center">
         <template #default="scope">
@@ -81,12 +81,12 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="collectionOpen" title="新增集合" width="480px" append-to-body>
+    <el-dialog v-model="collectionOpen" title="新增知识库" width="480px" append-to-body>
       <el-form ref="collectionRef" :model="collectionForm" :rules="collectionRules" label-width="90px">
-        <el-form-item label="集合名称" prop="name">
+        <el-form-item label="知识库名称" prop="name">
           <el-input
             v-model="collectionForm.name"
-            placeholder="请输入 Chroma 集合名称"
+            placeholder="请输入知识库名称"
             maxlength="255"
             @keyup.enter="submitCollection"
           />
@@ -100,7 +100,7 @@
 
     <el-drawer
       v-model="drawerOpen"
-      :title="currentCollection?.name || '集合文档'"
+      :title="currentCollection?.name || '知识库文档'"
       size="92%"
       destroy-on-close
       @closed="stopTaskPolling"
@@ -386,7 +386,7 @@ const collectionOpen = ref(false)
 const selectedCollectionIds = ref<string[]>([])
 const collectionForm = reactive({ name: '' } as CollectionCreateRequest)
 const collectionRules = {
-  name: [{ required: true, message: '集合名称不能为空', trigger: 'blur' }]
+  name: [{ required: true, message: '知识库名称不能为空', trigger: 'blur' }]
 }
 const drawerOpen = ref(false)
 const currentCollection = ref<ChromaCollection | null>(null)
@@ -470,7 +470,7 @@ function submitCollection() {
   proxy.$refs.collectionRef.validate((valid: boolean) => {
     if (!valid) return
     createCollection(collectionForm).then(() => {
-      proxy.$modal.msgSuccess('集合创建成功')
+      proxy.$modal.msgSuccess('知识库创建成功')
       collectionOpen.value = false
       getCollections()
     })
@@ -480,7 +480,7 @@ function submitCollection() {
 function handleDeleteCollections(row?: ChromaCollection) {
   const collectionIds = row ? [row.id] : selectedCollectionIds.value
   if (collectionIds.length === 0) {
-    proxy.$modal.msgError('请选择要删除的集合')
+    proxy.$modal.msgError('请选择要删除的知识库')
     return
   }
   const names = row
@@ -490,10 +490,10 @@ function handleDeleteCollections(row?: ChromaCollection) {
         .map((item: ChromaCollection) => item.name)
         .join('、')
   proxy.$modal
-    .confirm(`是否确认删除集合“${names}”？集合内全部文档和切片将同时删除。`)
+    .confirm(`是否确认删除知识库“${names}”？知识库内全部文档和切片将同时删除。`)
     .then(() => deleteCollections(collectionIds))
     .then(() => {
-      proxy.$modal.msgSuccess('集合删除成功')
+      proxy.$modal.msgSuccess('知识库删除成功')
       selectedCollectionIds.value = []
       getCollections()
       if (currentCollection.value && collectionIds.includes(currentCollection.value.id)) {

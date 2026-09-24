@@ -109,12 +109,11 @@ values
 delete from sys_role_menu where menu_id between 3000 and 3099;
 delete from sys_menu where menu_id between 3000 and 3099;
 
-insert into sys_menu values('3000', '知识库管理', '0', '5', 'knowledge', null, '', '', 1, 0, 'M', '0', '0', '', 'notebook-1', 'admin', sysdate(), '', null, '知识库管理目录');
-insert into sys_menu values('3001', '向量集合', '3000', '1', 'collection', 'knowledge/collection/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:collection:list', 'collection', 'admin', sysdate(), '', null, 'Chroma 集合管理菜单');
-insert into sys_menu values('3002', '模型管理', '3000', '2', 'model', 'knowledge/model/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:model:list', 'cpu', 'admin', sysdate(), '', null, 'AI 模型配置菜单');
-insert into sys_menu values('3003', 'AI对话', '0', '6', 'ai-chat', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'ai:chat:list', 'message', 'admin', sysdate(), '', null, 'AI对话菜单');
+insert into sys_menu values('3001', '知识库管理', '0', '5', 'knowledge-base', 'knowledge/collection/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:collection:list', 'collection', 'admin', sysdate(), '', null, '知识库管理菜单');
+insert into sys_menu values('3002', '模型管理', '0', '6', 'model', 'knowledge/model/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:model:list', 'cpu', 'admin', sysdate(), '', null, 'AI 模型配置菜单');
+insert into sys_menu values('3003', 'AI对话', '0', '7', 'ai-chat', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'ai:chat:list', 'message', 'admin', sysdate(), '', null, 'AI对话菜单');
 
-insert into sys_menu values('3010', '集合查询', '3001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:query', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3010', '知识库查询', '3001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3011', '文档查询', '3001', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:document:list', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3012', '文档新增', '3001', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:document:add', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3013', '文档修改', '3001', '4', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:document:edit', '#', 'admin', sysdate(), '', null, '');
@@ -123,8 +122,8 @@ insert into sys_menu values('3015', '重新向量化', '3001', '6', '', '', '', 
 insert into sys_menu values('3016', '任务查询', '3001', '7', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:list', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3017', '取消任务', '3001', '8', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:cancel', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3018', '重试任务', '3001', '9', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:task:retry', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3019', '新增集合', '3001', '10', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:add', '#', 'admin', sysdate(), '', null, '');
-insert into sys_menu values('3020', '删除集合', '3001', '11', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:remove', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3019', '新增知识库', '3001', '10', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:add', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3020', '删除知识库', '3001', '11', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:remove', '#', 'admin', sysdate(), '', null, '');
 
 insert into sys_menu values('3030', '模型查询', '3002', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3031', '模型新增', '3002', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:model:add', '#', 'admin', sysdate(), '', null, '');
@@ -136,7 +135,6 @@ insert into sys_menu values('3040', 'AI对话查询', '3003', '1', '', '', '', '
 insert into sys_menu values('3041', 'AI对话问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:chat', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3042', 'AI对话设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:edit', '#', 'admin', sysdate(), '', null, '');
 
-insert into sys_role_menu values('1', '3000');
 insert into sys_role_menu values('1', '3001');
 insert into sys_role_menu values('1', '3002');
 insert into sys_role_menu values('1', '3003');

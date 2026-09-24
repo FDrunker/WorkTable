@@ -171,7 +171,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="知识库集合" prop="collectionIds">
+        <el-form-item label="知识库" prop="collectionIds">
           <el-select
             v-model="settingsForm.collectionIds"
             multiple
@@ -179,7 +179,7 @@
             collapse-tags
             collapse-tags-tooltip
             class="full-width"
-            placeholder="请选择知识库集合"
+            placeholder="请选择知识库"
           >
             <el-option
               v-for="collection in options.collections"
