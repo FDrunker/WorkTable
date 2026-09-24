@@ -7,6 +7,7 @@ import cache from '@/plugins/cache'
 import { saveAs } from 'file-saver'
 import useUserStore from '@/store/modules/user'
 import { normalizeFormDataRequest } from '@/utils/request-content-type'
+import { getRequestFlags } from '@/utils/request-flags'
 
 let downloadLoadingInstance: ReturnType<typeof ElLoading.service>
 // 是否显示重新登录
@@ -24,14 +25,16 @@ const service = axios.create({
 // request拦截器
 service.interceptors.request.use((config: any) => {
   normalizeFormDataRequest(config)
-  // 是否需要设置 token
-  const isToken = (config.headers || {}).isToken === false
-  // 是否需要防止数据重复提交
-  const isRepeatSubmit = (config.headers || {}).repeatSubmit === false
+  const { skipToken, skipRepeatSubmit } = getRequestFlags(config)
+  delete config.headers.isToken
+  delete config.headers.repeatSubmit
   // 间隔时间(ms)，小于此时间视为重复提交
   const interval = (config.headers || {}).interval || 1000
-  if (getToken() && !isToken) {
+  if (getToken() && !skipToken) {
     config.headers['Authorization'] = 'Bearer ' + getToken() // 让每个请求携带自定义token 请根据实际情况自行修改
+  } else if (skipToken) {
+    delete config.headers.Authorization
+    delete config.headers.authorization
   }
   // get请求映射params参数
   if (config.method === 'get' && config.params) {
@@ -41,7 +44,7 @@ service.interceptors.request.use((config: any) => {
     config.url = url
   }
   const isFormData = typeof FormData !== 'undefined' && config.data instanceof FormData
-  if (!isRepeatSubmit && !isFormData && (config.method === 'post' || config.method === 'put')) {
+  if (!skipRepeatSubmit && !isFormData && (config.method === 'post' || config.method === 'put')) {
     const requestObj = {
       url: config.url,
       data: typeof config.data === 'object' ? JSON.stringify(config.data) : config.data,

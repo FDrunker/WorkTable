@@ -3,27 +3,37 @@
     <header class="public-header">
       <router-link class="brand" to="/">
         <span class="brand-mark">
-          <el-icon><ChatDotRound /></el-icon>
+          <el-icon><Grid /></el-icon>
         </span>
         <span class="brand-name">WorkTable</span>
       </router-link>
 
       <nav class="scene-switcher" aria-label="AI 对话场景">
         <button
-          v-for="item in scenes"
+          v-for="(item, index) in scenes"
           :key="item.scene"
           type="button"
           :class="{ active: item.scene === scene }"
+          :aria-current="item.scene === scene ? 'page' : undefined"
           @click="switchScene(item.scene)"
         >
-          {{ item.title }}
+          <span class="scene-index">{{ String(index + 1).padStart(2, '0') }}</span>
+          <span>{{ item.title }}</span>
         </button>
       </nav>
 
       <div class="header-actions">
-        <el-button class="mobile-history-button" circle text @click="historyOpen = true">
-          <el-icon><Clock /></el-icon>
-        </el-button>
+        <el-tooltip content="会话历史" placement="bottom">
+          <el-button
+            class="mobile-history-button"
+            circle
+            text
+            aria-label="打开会话历史"
+            @click="historyOpen = true"
+          >
+            <el-icon><Clock /></el-icon>
+          </el-button>
+        </el-tooltip>
         <router-link class="admin-entry" to="/admin/login">后台管理</router-link>
       </div>
     </header>
@@ -31,12 +41,13 @@
     <div class="public-body">
       <aside class="history-sidebar">
         <el-button class="new-chat-button" @click="startNewConversation">
-          <el-icon><EditPen /></el-icon>
+          <el-icon><Plus /></el-icon>
           <span>新建对话</span>
         </el-button>
 
         <div class="history-heading">
-          <span>历史对话</span>
+          <span>会话索引</span>
+          <span class="history-count">{{ String(conversations.length).padStart(2, '0') }}</span>
           <el-button
             v-if="conversations.length"
             text
@@ -51,16 +62,18 @@
 
         <div v-loading="historyLoading" class="history-list">
           <div v-if="!conversations.length && !historyLoading" class="history-empty">
+            <span>NO RECORDS</span>
             暂无对话记录
           </div>
           <button
-            v-for="item in conversations"
+            v-for="(item, index) in conversations"
             :key="item.conversationId"
             type="button"
             class="history-item"
             :class="{ active: item.conversationId === activeConversationId }"
             @click="openConversation(item.conversationId)"
           >
+            <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
               <span class="history-title">{{ item.title || '新对话' }}</span>
               <span class="history-preview">{{ item.lastMessage || '等待开始对话' }}</span>
@@ -181,20 +194,24 @@
     >
       <div class="mobile-history-panel">
         <el-button class="new-chat-button" @click="startNewConversation">
-          <el-icon><EditPen /></el-icon>
+          <el-icon><Plus /></el-icon>
           <span>新建对话</span>
         </el-button>
-        <div class="history-heading"><span>历史对话</span></div>
+        <div class="history-heading">
+          <span>会话索引</span>
+          <span class="history-count">{{ String(conversations.length).padStart(2, '0') }}</span>
+        </div>
         <div class="history-list">
           <div v-if="!conversations.length" class="history-empty">暂无对话记录</div>
           <button
-            v-for="item in conversations"
+            v-for="(item, index) in conversations"
             :key="item.conversationId"
             type="button"
             class="history-item"
             :class="{ active: item.conversationId === activeConversationId }"
             @click="openConversation(item.conversationId)"
           >
+            <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
               <span class="history-title">{{ item.title || '新对话' }}</span>
               <span class="history-preview">{{ item.lastMessage || '等待开始对话' }}</span>
@@ -463,23 +480,34 @@ loadScenes()
 
 <style scoped lang="scss">
 .public-chat {
+  --ink: #18211e;
+  --ink-soft: #4f5c57;
+  --muted: #7c8782;
+  --paper: #f3f5f0;
+  --paper-raised: #fbfcf8;
+  --line: #dce2da;
+  --line-strong: #c8d0c7;
+  --accent: #0b6a57;
+  --accent-soft: #e4efe9;
+  --signal: #ad5b28;
   height: 100vh;
   min-height: 560px;
   overflow: hidden;
-  background: #fff;
-  color: #1f2328;
+  background: var(--paper-raised);
+  color: var(--ink);
+  font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
 }
 
 .public-header {
   position: relative;
   z-index: 20;
-  height: 60px;
+  height: 64px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 0 24px;
-  border-bottom: 1px solid #eceff3;
-  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-raised);
 }
 
 .brand {
@@ -487,35 +515,49 @@ loadScenes()
   align-items: center;
   gap: 9px;
   width: fit-content;
-  color: #1f2328;
+  color: var(--ink);
 }
 
 .brand-mark {
-  width: 30px;
-  height: 30px;
+  position: relative;
+  width: 28px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: #eef4ff;
-  color: #3867d6;
-  font-size: 17px;
+  border-radius: 3px;
+  background: var(--ink);
+  color: #f6faf6;
+  font-size: 16px;
+}
+
+.brand-mark::after {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--paper-raised);
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
 }
 
 .brand-name {
-  font-size: 16px;
-  font-weight: 650;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0;
 }
 
 .scene-switcher {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  align-self: stretch;
+  align-items: flex-end;
+  gap: 28px;
   max-width: min(72vw, 760px);
   overflow-x: auto;
-  padding: 4px;
-  border-radius: 10px;
-  background: #f4f5f7;
+  padding: 0;
+  background: transparent;
   scrollbar-width: none;
 }
 
@@ -524,28 +566,42 @@ loadScenes()
 }
 
 .scene-switcher button {
-  min-width: 96px;
-  height: 34px;
-  padding: 0 18px;
+  min-width: auto;
+  height: 63px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
   border: 0;
-  border-radius: 8px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
-  color: #69707a;
+  color: var(--ink-soft);
   font: inherit;
   font-size: 14px;
   cursor: pointer;
-  transition: color 0.18s, background 0.18s, box-shadow 0.18s;
+  transition: color 0.18s, border-color 0.18s;
 }
 
 .scene-switcher button:hover {
-  color: #1f2328;
+  color: var(--ink);
 }
 
 .scene-switcher button.active {
-  background: #fff;
-  color: #1f2328;
-  font-weight: 600;
-  box-shadow: 0 1px 4px rgba(25, 35, 55, 0.12);
+  border-bottom-color: var(--accent);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.scene-index {
+  color: var(--muted);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.scene-switcher button.active .scene-index {
+  color: var(--accent);
 }
 
 .header-actions {
@@ -556,12 +612,15 @@ loadScenes()
 }
 
 .admin-entry {
-  color: #69707a;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--line-strong);
+  color: var(--ink-soft);
   font-size: 13px;
 }
 
 .admin-entry:hover {
-  color: #3867d6;
+  border-bottom-color: var(--accent);
+  color: var(--accent);
 }
 
 .mobile-history-button {
@@ -569,49 +628,75 @@ loadScenes()
 }
 
 .public-body {
-  height: calc(100vh - 60px);
+  height: calc(100vh - 64px);
   display: grid;
-  grid-template-columns: 262px minmax(0, 1fr);
+  grid-template-columns: 248px minmax(0, 1fr);
 }
 
 .history-sidebar {
   min-width: 0;
-  padding: 16px 12px;
-  border-right: 1px solid #eef0f3;
-  background: #f8f9fb;
+  padding: 18px 14px;
+  border-right: 1px solid var(--line);
+  background: var(--paper);
 }
 
 .new-chat-button {
   width: 100%;
-  height: 42px;
+  height: 40px;
   justify-content: flex-start;
   gap: 8px;
-  border-color: #dfe4eb;
-  border-radius: 8px;
-  background: #fff;
-  color: #31353b;
+  border-color: var(--ink);
+  border-radius: 4px;
+  background: var(--ink);
+  color: #f7faf7;
+  font-weight: 600;
+}
+
+.new-chat-button:hover,
+.new-chat-button:focus {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .history-heading {
-  height: 42px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 7px;
-  color: #87909c;
-  font-size: 12px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.history-count {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .history-list {
-  height: calc(100% - 84px);
+  height: calc(100% - 86px);
+  padding-top: 8px;
   overflow-y: auto;
 }
 
 .history-empty {
-  padding: 28px 8px;
-  color: #a0a7b1;
-  font-size: 13px;
-  text-align: center;
+  padding: 32px 6px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+
+.history-empty span {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--line-strong);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 10px;
 }
 
 .history-item {
@@ -621,25 +706,46 @@ loadScenes()
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 3px;
-  padding: 8px 34px 8px 10px;
-  border: 0;
-  border-radius: 8px;
+  margin-bottom: 1px;
+  padding: 8px 30px 8px 12px;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
-  color: #30343a;
+  color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.history-item:hover,
+.history-item:hover {
+  border-bottom-color: var(--line);
+  background: rgba(255, 255, 255, 0.54);
+}
+
 .history-item.active {
-  background: #eceff4;
+  border-left-color: var(--accent);
+  border-bottom-color: var(--line);
+  background: var(--accent-soft);
 }
 
 .history-content {
   min-width: 0;
   flex: 1;
+}
+
+.history-index {
+  width: 18px;
+  flex: 0 0 18px;
+  color: var(--line-strong);
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-item.active .history-index {
+  color: var(--accent);
 }
 
 .history-title,
@@ -652,18 +758,19 @@ loadScenes()
 
 .history-title {
   margin-bottom: 3px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .history-preview,
 .history-time {
-  color: #949ba5;
-  font-size: 11px;
+  color: var(--muted);
+  font-size: 10px;
 }
 
 .history-time {
   flex: 0 0 auto;
+  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
 }
 
 .history-delete {
@@ -685,14 +792,14 @@ loadScenes()
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--paper-raised);
 }
 
 .message-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 34px 24px 150px;
+  padding: 38px 28px 164px;
 }
 
 .message-scroll.empty {
@@ -703,50 +810,65 @@ loadScenes()
 }
 
 .welcome {
-  max-width: 700px;
+  position: relative;
+  max-width: 660px;
   padding: 0 20px;
   text-align: center;
 }
 
 .welcome-mark {
-  width: 52px;
-  height: 52px;
+  position: relative;
+  width: 48px;
+  height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 18px;
-  border-radius: 14px;
-  background: #edf3ff;
-  color: #3867d6;
-  font-size: 25px;
+  margin-bottom: 20px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--ink);
+  color: #f7faf7;
+  font-size: 22px;
+}
+
+.welcome-mark::after {
+  position: absolute;
+  right: -5px;
+  bottom: 10px;
+  width: 10px;
+  height: 2px;
+  background: var(--accent);
+  content: "";
 }
 
 .welcome h1 {
   margin: 0 0 12px;
-  font-size: clamp(24px, 3vw, 34px);
-  font-weight: 620;
-  line-height: 1.25;
+  color: var(--ink);
+  font-family: "Songti SC", "Noto Serif SC", "SimSun", serif;
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 650;
+  line-height: 1.2;
 }
 
 .welcome p {
   max-width: 580px;
   margin: 0 auto;
-  color: #7b838e;
-  font-size: 15px;
-  line-height: 1.7;
+  color: var(--ink-soft);
+  font-size: 14px;
+  line-height: 1.8;
 }
 
 .welcome .service-unavailable {
-  color: #b15f23;
+  color: var(--signal);
 }
 
 .message-column {
-  width: min(820px, 100%);
+  width: min(840px, 100%);
   margin: 0 auto;
 }
 
 .message {
-  margin-bottom: 28px;
+  margin-bottom: 30px;
 }
 
 .message.user {
@@ -756,12 +878,13 @@ loadScenes()
 
 .user-bubble {
   max-width: min(620px, 86%);
-  padding: 10px 15px;
-  border-radius: 16px 16px 4px 16px;
-  background: #f0f2f5;
-  color: #25292f;
-  font-size: 15px;
-  line-height: 1.7;
+  padding: 11px 14px;
+  border: 1px solid #cfd9d1;
+  border-radius: 6px 6px 2px 6px;
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -773,16 +896,17 @@ loadScenes()
 }
 
 .assistant-avatar {
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9px;
-  background: #edf3ff;
-  color: #3867d6;
-  font-size: 17px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--paper-raised);
+  color: var(--accent);
+  font-size: 15px;
 }
 
 .assistant-content {
@@ -792,9 +916,9 @@ loadScenes()
 }
 
 .message-text {
-  color: #292d33;
-  font-size: 15px;
-  line-height: 1.82;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.9;
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -810,9 +934,10 @@ loadScenes()
   }
 
   :deep(.el-collapse-item__header) {
-    height: 32px;
-    color: #7b838e;
-    font-size: 12px;
+    height: 34px;
+    color: var(--ink-soft);
+    font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 10px;
   }
 
   :deep(.el-collapse-item__content) {
@@ -827,23 +952,23 @@ loadScenes()
 }
 
 .source-item {
-  margin-top: 7px;
+  margin-top: 8px;
   padding: 10px 12px;
-  border-left: 2px solid #a8bde8;
-  background: #f7f9fc;
+  border-left: 2px solid var(--accent);
+  background: var(--paper);
 }
 
 .source-name {
   margin-bottom: 5px;
-  color: #4a5360;
+  color: var(--ink);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .source-content {
   max-height: 130px;
   overflow-y: auto;
-  color: #737c88;
+  color: var(--ink-soft);
   font-size: 12px;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -853,14 +978,14 @@ loadScenes()
   height: 30px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
 }
 
 .typing span {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #8e98a6;
+  width: 8px;
+  height: 3px;
+  border-radius: 0;
+  background: var(--accent);
   animation: public-typing 1.1s infinite ease-in-out;
 }
 
@@ -877,36 +1002,38 @@ loadScenes()
   right: 0;
   bottom: 0;
   left: 0;
-  padding: 16px 24px 24px;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), #fff 25%);
+  padding: 14px 24px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--paper-raised);
 }
 
 .composer-area.centered {
   position: fixed;
   right: 0;
   bottom: 16vh;
-  left: 262px;
+  left: 248px;
   padding: 0 24px;
+  border-top: 0;
   background: transparent;
 }
 
 .composer {
-  width: min(820px, 100%);
-  min-height: 56px;
+  width: min(840px, 100%);
+  min-height: 54px;
   display: flex;
   align-items: flex-end;
   gap: 10px;
   margin: 0 auto;
-  padding: 9px 10px 9px 16px;
-  border: 1px solid #dce1e8;
-  border-radius: 14px;
+  padding: 8px 9px 8px 15px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
   background: #fff;
-  box-shadow: 0 7px 24px rgba(24, 36, 55, 0.08);
+  box-shadow: 0 1px 0 rgba(24, 33, 30, 0.06);
 }
 
 .composer:focus-within {
-  border-color: #9db9ed;
-  box-shadow: 0 7px 24px rgba(51, 102, 204, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .composer :deep(.el-textarea__inner) {
@@ -914,21 +1041,31 @@ loadScenes()
   padding: 7px 2px;
   border: 0;
   box-shadow: none !important;
-  color: #25292f;
-  font-size: 15px;
+  color: var(--ink);
+  font-size: 14px;
   line-height: 1.6;
 }
 
 .send-button {
-  width: 38px;
-  height: 38px;
-  flex: 0 0 38px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 4px;
+  --el-button-bg-color: var(--accent);
+  --el-button-border-color: var(--accent);
+  --el-button-hover-bg-color: var(--ink);
+  --el-button-hover-border-color: var(--ink);
+  --el-button-active-bg-color: var(--ink);
+  --el-button-active-border-color: var(--ink);
+  --el-button-disabled-bg-color: var(--line);
+  --el-button-disabled-border-color: var(--line);
+  --el-button-disabled-text-color: var(--muted);
 }
 
 .mobile-history-panel {
   height: 100%;
-  padding: 16px 12px;
-  background: #f8f9fb;
+  padding: 18px 14px;
+  background: var(--paper);
 }
 
 .mobile-history-panel .history-list {
@@ -953,7 +1090,7 @@ loadScenes()
   .public-header {
     grid-template-columns: auto 1fr auto;
     gap: 10px;
-    height: 58px;
+    height: 60px;
     padding: 0 12px;
   }
 
@@ -964,13 +1101,18 @@ loadScenes()
 
   .scene-switcher {
     justify-self: center;
+    gap: 18px;
   }
 
   .scene-switcher button {
     min-width: auto;
-    height: 32px;
-    padding: 0 12px;
+    height: 59px;
+    padding: 0 1px;
     font-size: 13px;
+  }
+
+  .scene-index {
+    display: none;
   }
 
   .mobile-history-button {
@@ -978,7 +1120,7 @@ loadScenes()
   }
 
   .public-body {
-    height: calc(100vh - 58px);
+    height: calc(100vh - 60px);
     display: block;
   }
 
@@ -987,7 +1129,7 @@ loadScenes()
   }
 
   .message-scroll {
-    padding: 24px 14px 142px;
+    padding: 28px 14px 148px;
   }
 
   .message-scroll.empty {
@@ -1006,7 +1148,7 @@ loadScenes()
   }
 
   .welcome h1 {
-    font-size: 24px;
+    font-size: 26px;
   }
 
   .composer-area {
@@ -1020,9 +1162,9 @@ loadScenes()
   }
 
   .composer {
-    min-height: 52px;
+    min-height: 50px;
     padding-left: 13px;
-    border-radius: 12px;
+    border-radius: 5px;
   }
 
   .assistant-row {

@@ -6,6 +6,7 @@ AI 对话与后台管理平台，基于 **RuoYi-Vue 3.9.2**（若依）前后端
 
 - [前端接手说明](docs/FRONTEND_HANDOFF.md)：启动链路、路由权限、请求协议、页面模块、测试与扩展方式。
 - [后端接手说明](docs/BACKEND_HANDOFF.md)：Maven 模块、认证鉴权、数据库、知识库任务、AI 对话、微信归档与测试。
+- [公开聊天页设计规范](docs/PUBLIC_CHAT_DESIGN.md)：公开 AI 页面的视觉命题、设计原则、反模式和响应式约束。
 
 文档引用校验：`node --test tests/documentation.test.mjs`。
 

@@ -8,13 +8,13 @@ import type {
   PublicChatScene
 } from '@/types'
 
-const publicHeaders = { isToken: false, repeatSubmit: false }
+const anonymousRequest = { isToken: false, repeatSubmit: false }
 
 export function listPublicChatScenes(): Promise<AjaxResult<PublicChatScene[]>> {
   return request({
     url: '/public/ai-chat/scenes',
     method: 'get',
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }
 
@@ -26,7 +26,7 @@ export function getPublicChatBootstrap(
     url: `/public/ai-chat/${encodeURIComponent(scene)}/bootstrap`,
     method: 'get',
     params: { visitorId },
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }
 
@@ -38,7 +38,7 @@ export function createPublicChatConversation(
     url: `/public/ai-chat/${encodeURIComponent(scene)}/conversations`,
     method: 'post',
     params: { visitorId },
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }
 
@@ -51,7 +51,7 @@ export function getPublicChatConversation(
     url: `/public/ai-chat/${encodeURIComponent(scene)}/conversations/${encodeURIComponent(conversationId)}`,
     method: 'get',
     params: { visitorId },
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }
 
@@ -64,7 +64,7 @@ export function deletePublicChatConversation(
     url: `/public/ai-chat/${encodeURIComponent(scene)}/conversations/${encodeURIComponent(conversationId)}`,
     method: 'delete',
     params: { visitorId },
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }
 
@@ -79,6 +79,6 @@ export function sendPublicChatMessage(
     method: 'post',
     data: { visitorId, question },
     timeout: 180000,
-    headers: publicHeaders
+    ...anonymousRequest
   })
 }

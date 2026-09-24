@@ -11,11 +11,22 @@ function read(relativePath) {
   return readFileSync(absolutePath, 'utf8')
 }
 
-test('README links to both handoff documents', () => {
+test('README links to the handoff documents and public design contract', () => {
   const readme = read('README.md')
 
   assert.match(readme, /docs\/FRONTEND_HANDOFF\.md/)
   assert.match(readme, /docs\/BACKEND_HANDOFF\.md/)
+  assert.match(readme, /docs\/PUBLIC_CHAT_DESIGN\.md/)
+})
+
+test('public chat design contract covers the intended direction and anti-patterns', () => {
+  const document = read('docs/PUBLIC_CHAT_DESIGN.md')
+
+  assert.match(document, /calm editorial workbench/)
+  assert.match(document, /Mineral green/)
+  assert.match(document, /No glossy gradients/)
+  assert.match(document, /No pill navigation/)
+  assert.match(document, /390px/)
 })
 
 test('frontend handoff covers startup, architecture, features, and verification', () => {
