@@ -348,7 +348,7 @@ Controller
 
 - 导入必须选择 `embedding` 模型，未选择会直接拒绝。
 - `.md` 文件先保存到 `knowledge.storage-path`，成功写入后删除暂存文件；正文仍保存在 MySQL。
-- 默认分隔符是换行，默认块大小 1024，默认重叠 100。
+- Markdown 按段落自动切分，围栏代码块会作为完整段落保留；默认块大小 1024，默认重叠 100。
 - Chroma 写入批次是 64；读取按 500 分页，单次最多读取 10000 条。
 - 没有 `documentId` metadata 的 Chroma 记录会被视为外部已有数据。
 - 删除 collection 前会检查 `PENDING` 或 `RUNNING` 任务。

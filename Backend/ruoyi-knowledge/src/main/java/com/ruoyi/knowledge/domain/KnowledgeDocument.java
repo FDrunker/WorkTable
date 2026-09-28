@@ -23,8 +23,6 @@ public class KnowledgeDocument extends BaseEntity
 
     private String tempFilePath;
 
-    private String chunkSeparator;
-
     private Integer chunkSize;
 
     private Integer chunkOverlap;
@@ -103,16 +101,6 @@ public class KnowledgeDocument extends BaseEntity
     public void setTempFilePath(String tempFilePath)
     {
         this.tempFilePath = tempFilePath;
-    }
-
-    public String getChunkSeparator()
-    {
-        return chunkSeparator;
-    }
-
-    public void setChunkSeparator(String chunkSeparator)
-    {
-        this.chunkSeparator = chunkSeparator;
     }
 
     public Integer getChunkSize()

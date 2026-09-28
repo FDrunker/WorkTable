@@ -121,8 +121,7 @@ public class DocumentTaskProcessor
         }
         request.setContent(content);
 
-        List<String> chunks = chunker.split(content, request.getSeparator(), request.getChunkSize(),
-                request.getChunkOverlap());
+        List<String> chunks = chunker.split(content, request.getChunkSize(), request.getChunkOverlap());
         if (chunks.isEmpty())
         {
             throw new ServiceException("切片结果为空");

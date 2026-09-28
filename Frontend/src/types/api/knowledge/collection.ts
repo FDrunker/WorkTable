@@ -31,7 +31,6 @@ export interface KnowledgeDocumentDetail {
   documentName: string
   sourceType: string
   content: string
-  chunkSeparator: string
   chunkSize: number
   chunkOverlap: number
   embeddingModelId?: number
@@ -57,7 +56,6 @@ export interface DocumentImportRequest {
   collectionName?: string
   documentName: string
   modelId?: number
-  separator: string
   chunkSize: number
   chunkOverlap: number
   content?: string

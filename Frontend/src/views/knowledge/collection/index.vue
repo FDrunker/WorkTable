@@ -311,9 +311,6 @@
             placeholder="请输入 Markdown 内容"
           />
         </el-form-item>
-        <el-form-item label="分隔符" prop="separator">
-          <el-input v-model="documentForm.separator" placeholder="默认 \n" />
-        </el-form-item>
         <el-row>
           <el-col :span="12">
             <el-form-item label="块大小" prop="chunkSize">
@@ -426,7 +423,6 @@ const documentForm = reactive({
   collectionName: '',
   documentName: '',
   modelId: undefined,
-  separator: '\\n',
   chunkSize: 1024,
   chunkOverlap: 100,
   content: ''
@@ -435,7 +431,6 @@ const documentForm = reactive({
 const documentRules = {
   documentName: [{ required: true, message: '文档名称不能为空', trigger: 'blur' }],
   modelId: [{ required: true, message: '请选择 Embedding 模型', trigger: 'change' }],
-  separator: [{ required: true, message: '分隔符不能为空', trigger: 'blur' }],
   chunkSize: [{ required: true, message: '块大小不能为空', trigger: 'blur' }],
   chunkOverlap: [{ required: true, message: '重叠长度不能为空', trigger: 'blur' }]
 }
@@ -598,7 +593,6 @@ function resetDocumentForm() {
   documentForm.documentName = ''
   documentForm.modelId = undefined
   selectDefaultEmbeddingModel()
-  documentForm.separator = '\\n'
   documentForm.chunkSize = 1024
   documentForm.chunkOverlap = 100
   documentForm.content = ''
@@ -624,13 +618,11 @@ async function handleEditDocument(row: KnowledgeDocument) {
   if (row.managed) {
     const response = await getKnowledgeDocument(row.documentId)
     documentForm.content = response.data?.content || ''
-    documentForm.separator = response.data?.chunkSeparator || '\\n'
     documentForm.chunkSize = response.data?.chunkSize || 1024
     documentForm.chunkOverlap = response.data?.chunkOverlap || 100
   } else {
     const response = await listKnowledgeChunks(row.collectionId, row.documentId)
     documentForm.content = (response.data || []).map((item) => item.content).join('\n')
-    documentForm.separator = '\\n'
   }
   editorOpen.value = true
 }

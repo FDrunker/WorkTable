@@ -234,7 +234,6 @@ public class KnowledgeDocumentService
             document.setDocumentName(metadata(record, "documentName", documentId));
             document.setSourceType("EXTERNAL");
             document.setContent(record.content());
-            document.setChunkSeparator("\n");
             document.setChunkSize(1024);
             document.setChunkOverlap(100);
             document.setStatus(KnowledgeDocumentStatus.PENDING);
@@ -331,7 +330,6 @@ public class KnowledgeDocumentService
 
     private void applyChunkConfig(KnowledgeDocument document, DocumentImportRequest request)
     {
-        document.setChunkSeparator(StringUtils.hasText(request.getSeparator()) ? request.getSeparator() : "\n");
         document.setChunkSize(request.getChunkSize() == null ? 1024 : request.getChunkSize());
         document.setChunkOverlap(request.getChunkOverlap() == null ? 100 : request.getChunkOverlap());
     }
@@ -352,7 +350,6 @@ public class KnowledgeDocumentService
         request.setCollectionName(document.getCollectionName());
         request.setDocumentName(document.getDocumentName());
         request.setModelId(document.getEmbeddingModelId());
-        request.setSeparator(document.getChunkSeparator());
         request.setChunkSize(document.getChunkSize());
         request.setChunkOverlap(document.getChunkOverlap());
         request.setContent(document.getContent());

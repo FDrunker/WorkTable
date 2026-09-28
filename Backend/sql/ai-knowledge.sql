@@ -41,7 +41,6 @@ create table ai_knowledge_document (
   source_type       varchar(16)   not null                comment '来源 UPLOAD/PASTE',
   content           longtext                              comment 'Markdown 正文',
   temp_file_path    varchar(1000) default null            comment '本地暂存文件路径',
-  chunk_separator   varchar(64)   default '\n'            comment '切片分隔符',
   chunk_size        int           default 1024            comment '切片大小（字符）',
   chunk_overlap     int           default 100             comment '切片重叠（字符）',
   embedding_model_id bigint       default null            comment '创建或最近更新时选择的 embedding 模型',

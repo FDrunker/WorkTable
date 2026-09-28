@@ -1,8 +1,11 @@
 package com.ruoyi.knowledge.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * 文档导入或更新请求。
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class DocumentImportRequest
 {
     private String documentId;
@@ -14,8 +17,6 @@ public class DocumentImportRequest
     private String documentName;
 
     private Long modelId;
-
-    private String separator = "\n";
 
     private Integer chunkSize = 1024;
 
@@ -71,16 +72,6 @@ public class DocumentImportRequest
     public void setModelId(Long modelId)
     {
         this.modelId = modelId;
-    }
-
-    public String getSeparator()
-    {
-        return separator;
-    }
-
-    public void setSeparator(String separator)
-    {
-        this.separator = separator;
     }
 
     public Integer getChunkSize()

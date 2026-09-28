@@ -35,4 +35,17 @@ class KnowledgeTaskPayloadJsonTest
         assertTrue(restored.isManaged());
         assertEquals("old-1", restored.getOriginalRecordIds().get(0));
     }
+
+    @Test
+    void ignoresLegacySeparatorInPersistedTaskPayload() throws Exception
+    {
+        String json = "{\"request\":{\"collectionId\":\"collection-1\",\"documentName\":\"guide.md\","
+                + "\"content\":\"# 标题\",\"separator\":\"\\n\"},\"managed\":true}";
+
+        DocumentTaskPayload restored = objectMapper.readValue(json, DocumentTaskPayload.class);
+
+        assertEquals("guide.md", restored.getRequest().getDocumentName());
+        assertEquals("# 标题", restored.getRequest().getContent());
+        assertTrue(restored.isManaged());
+    }
 }

@@ -15,15 +15,29 @@ class MarkdownChunkerTest
     private final MarkdownChunker chunker = new MarkdownChunker();
 
     @Test
-    void splitsByDefaultNewlineAndKeepsChunkBudget()
+    void splitsByMarkdownParagraphsAndKeepsChunkBudget()
     {
-        String content = "第一段内容。\n第二段内容。\n第三段内容。\n第四段内容。";
+        String firstParagraph = "第一段内容。\n同一段续行。";
+        String content = firstParagraph + "\n\n第二段内容。\n\n第三段内容。";
 
-        List<String> chunks = chunker.split(content, "\\n", 12, 2);
+        List<String> chunks = chunker.split(content, 18, 2);
 
         assertTrue(chunks.size() > 1);
-        assertTrue(chunks.stream().allMatch(chunk -> chunk.length() <= 12));
-        assertTrue(chunks.get(0).contains("第一段"));
+        assertTrue(chunks.stream().allMatch(chunk -> chunk.length() <= 18));
+        assertEquals(firstParagraph, chunks.get(0));
+        assertTrue(chunks.get(1).contains("第二段内容。"));
+        assertTrue(chunks.get(1).contains("第三段内容。"));
+    }
+
+    @Test
+    void keepsFencedCodeBlockAsOneMarkdownParagraph()
+    {
+        String code = "```java\nline 1\n\nline 2\n```";
+        String content = "前言\n\n" + code + "\n\n后记";
+
+        List<String> chunks = chunker.split(content, code.length(), 0);
+
+        assertEquals(List.of("前言", code, "后记"), chunks);
     }
 
     @Test
@@ -31,7 +45,7 @@ class MarkdownChunkerTest
     {
         String content = "abcdefghijklmnopqrstuvwxyz";
 
-        List<String> chunks = chunker.split(content, "\n", 10, 3);
+        List<String> chunks = chunker.split(content, 10, 3);
 
         assertEquals(4, chunks.size());
         assertEquals("hij", chunks.get(1).substring(0, 3));
@@ -41,6 +55,6 @@ class MarkdownChunkerTest
     @Test
     void rejectsOverlapNotSmallerThanChunkSize()
     {
-        assertThrows(ServiceException.class, () -> chunker.split("content", "\n", 10, 10));
+        assertThrows(ServiceException.class, () -> chunker.split("content", 10, 10));
     }
 }
