@@ -5,6 +5,9 @@ import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.SystemMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
@@ -188,7 +191,7 @@ public class CustomerServiceAiChatService
                 你是一个客服工单分类专家。请分析以下工单，输出 JSON 格式的分类结果。
                 只输出 JSON，不要输出 Markdown 或额外说明。
 
-                output_schema:
+                输出内容:
                 {
                   "category": "standard 或 complex",
                   "reason": "分类理由（一句话）",
@@ -196,7 +199,7 @@ public class CustomerServiceAiChatService
                   "confidence": 0.0
                 }
 
-                criteria:
+                判断标准:
                 standard: 物流查询、退货政策、普通退款（<500元）、账号问题
                 complex: 大额退款（>500元）、投诉、纠纷、产品质量问题
 
