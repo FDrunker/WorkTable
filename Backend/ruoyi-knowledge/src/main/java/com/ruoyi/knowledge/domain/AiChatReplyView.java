@@ -1,7 +1,7 @@
 package com.ruoyi.knowledge.domain;
 
 /**
- * 公开 AI 对话回复及持久化结果。
+ * 会话中一次问答的持久化结果。
  */
 public record AiChatReplyView(
         String conversationId,

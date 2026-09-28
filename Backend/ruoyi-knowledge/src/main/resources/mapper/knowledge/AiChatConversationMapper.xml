@@ -24,6 +24,9 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="intentConfidence" column="intent_confidence" />
         <result property="needsClarification" column="needs_clarification" />
         <result property="sourcesJson" column="sources_json" />
+        <result property="category" column="category" />
+        <result property="priority" column="priority" />
+        <result property="ticketNo" column="ticket_no" />
         <result property="createTime" column="create_time" />
     </resultMap>
 
@@ -79,7 +82,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectMessages" resultMap="AiChatMessageResult">
         select message_id, conversation_id, role, content, intent, intent_confidence,
-               needs_clarification, sources_json, create_time
+               needs_clarification, sources_json, category, priority, ticket_no, create_time
         from ai_chat_message
         where conversation_id = #{conversationId}
         order by message_id asc
@@ -87,7 +90,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <select id="selectRecentMessages" resultMap="AiChatMessageResult">
         select message_id, conversation_id, role, content, intent, intent_confidence,
-               needs_clarification, sources_json, create_time
+               needs_clarification, sources_json, category, priority, ticket_no, create_time
         from ai_chat_message
         where conversation_id = #{conversationId}
         order by message_id desc
@@ -104,10 +107,10 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             useGeneratedKeys="true" keyProperty="messageId">
         insert into ai_chat_message (
             conversation_id, role, content, intent, intent_confidence,
-            needs_clarification, sources_json, create_time
+            needs_clarification, sources_json, category, priority, ticket_no, create_time
         ) values (
             #{conversationId}, #{role}, #{content}, #{intent}, #{intentConfidence},
-            #{needsClarification}, #{sourcesJson}, sysdate()
+            #{needsClarification}, #{sourcesJson}, #{category}, #{priority}, #{ticketNo}, sysdate()
         )
     </insert>
 

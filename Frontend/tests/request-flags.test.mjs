@@ -12,7 +12,11 @@ test('reads anonymous request flags from the Axios config', () => {
 
 test('forces public API requests to be anonymous even when a token exists', () => {
   assert.deepEqual(
-    getRequestFlags({ url: '/public/ai-chat/scenes' }),
+    getRequestFlags({ url: '/public/resume-ai/bootstrap' }),
+    { skipToken: true, skipRepeatSubmit: true }
+  )
+  assert.deepEqual(
+    getRequestFlags({ url: '/public/customer-service-ai/bootstrap' }),
     { skipToken: true, skipRepeatSubmit: true }
   )
 })

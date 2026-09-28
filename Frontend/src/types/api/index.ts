@@ -6,7 +6,8 @@ export * from "./common";
 // 登录模块
 export * from "./login";
 export * from "./menu";
-export * from "./publicChat";
+export * from "./publicResume";
+export * from "./publicCustomerService";
 
 // System 模块
 export * from "./system/user";
@@ -34,3 +35,4 @@ export * from "./wechat/chat";
 export * from "./knowledge/collection";
 export * from "./knowledge/model";
 export * from "./knowledge/customerService";
+export * from "./knowledge/customerServiceTicket";

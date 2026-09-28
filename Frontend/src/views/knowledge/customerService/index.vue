@@ -267,7 +267,7 @@ const messages = ref<ChatMessage[]>([])
 const activeScene = ref('admin')
 const sceneOptions = ref([
   { label: '后台 AI 对话', value: 'admin' },
-  { label: '个人信息', value: 'personal-info' },
+  { label: '个人简历 AI', value: 'personal-info' },
   { label: '智能客服', value: 'customer-service' }
 ])
 

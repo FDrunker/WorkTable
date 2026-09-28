@@ -1,70 +1,42 @@
 <template>
-  <div class="public-chat">
+  <div class="customer-ai-page">
     <header class="public-header">
       <router-link class="brand" to="/">
-        <span class="brand-mark">
-          <el-icon><Grid /></el-icon>
-        </span>
+        <span class="brand-mark"><el-icon><Grid /></el-icon></span>
         <span class="brand-name">WorkTable</span>
       </router-link>
 
-      <nav class="scene-switcher" aria-label="AI 对话场景">
-        <button
-          v-for="(item, index) in scenes"
-          :key="item.scene"
-          type="button"
-          :class="{ active: item.scene === scene }"
-          :aria-current="item.scene === scene ? 'page' : undefined"
-          @click="switchScene(item.scene)"
-        >
-          <span class="scene-index">{{ String(index + 1).padStart(2, '0') }}</span>
-          <span>{{ item.title }}</span>
-        </button>
-      </nav>
+      <span class="page-label">智能客服</span>
 
       <div class="header-actions">
-        <el-tooltip content="会话历史" placement="bottom">
-          <el-button
-            class="mobile-history-button"
-            circle
-            text
-            aria-label="打开会话历史"
-            @click="historyOpen = true"
-          >
-            <el-icon><Clock /></el-icon>
-          </el-button>
-        </el-tooltip>
-        <router-link class="admin-entry" to="/admin/login">后台管理</router-link>
+        <router-link class="header-link" to="/personal-info">个人简历 AI</router-link>
+        <router-link class="header-link" to="/admin/login">后台管理</router-link>
+        <el-button
+          class="mobile-history-button"
+          circle
+          text
+          aria-label="打开会话历史"
+          @click="historyOpen = true"
+        >
+          <el-icon><Clock /></el-icon>
+        </el-button>
       </div>
     </header>
 
     <div class="public-body">
       <aside class="history-sidebar">
-        <el-button class="new-chat-button" @click="startNewConversation">
+        <el-button class="new-ticket-button" @click="startNewTicket">
           <el-icon><Plus /></el-icon>
-          <span>新建对话</span>
+          <span>新建工单</span>
         </el-button>
 
         <div class="history-heading">
           <span>会话索引</span>
           <span class="history-count">{{ String(conversations.length).padStart(2, '0') }}</span>
-          <el-button
-            v-if="conversations.length"
-            text
-            circle
-            size="small"
-            aria-label="刷新历史对话"
-            @click="loadConversations"
-          >
-            <el-icon><Refresh /></el-icon>
-          </el-button>
         </div>
 
         <div v-loading="historyLoading" class="history-list">
-          <div v-if="!conversations.length && !historyLoading" class="history-empty">
-            <span>NO RECORDS</span>
-            暂无对话记录
-          </div>
+          <div v-if="!conversations.length && !historyLoading" class="history-empty">暂无会话记录</div>
           <button
             v-for="(item, index) in conversations"
             :key="item.conversationId"
@@ -75,16 +47,15 @@
           >
             <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
-              <span class="history-title">{{ item.title || '新对话' }}</span>
-              <span class="history-preview">{{ item.lastMessage || '等待开始对话' }}</span>
+              <span class="history-title">{{ item.title || '新工单' }}</span>
+              <span class="history-preview">{{ item.lastMessage || '等待提交问题' }}</span>
             </span>
-            <span class="history-time">{{ formatHistoryTime(item.updateTime) }}</span>
             <el-button
               class="history-delete"
               text
               circle
               size="small"
-              aria-label="删除对话"
+              aria-label="删除会话"
               @click.stop="removeConversation(item.conversationId)"
             >
               <el-icon><Delete /></el-icon>
@@ -96,14 +67,10 @@
       <main class="chat-main">
         <div ref="messageListRef" class="message-scroll" :class="{ empty: !messages.length }">
           <section v-if="!messages.length" class="welcome">
-            <div class="welcome-mark">
-              <el-icon><ChatDotRound /></el-icon>
-            </div>
+            <div class="welcome-mark"><el-icon><Service /></el-icon></div>
             <h1>{{ sceneTitle }}</h1>
             <p v-if="isReady">{{ sceneWelcome }}</p>
-            <p v-else class="service-unavailable">
-              当前服务暂不可用，请稍后再试
-            </p>
+            <p v-else class="service-unavailable">当前服务暂不可用，请稍后再试</p>
           </section>
 
           <div v-else class="message-column">
@@ -114,10 +81,22 @@
               :class="message.role"
             >
               <div v-if="message.role === 'assistant'" class="assistant-row">
-                <div class="assistant-avatar">
-                  <el-icon><ChatDotRound /></el-icon>
-                </div>
+                <div class="assistant-avatar"><el-icon><Service /></el-icon></div>
                 <div class="assistant-content">
+                  <div class="message-meta">
+                    <el-tag v-if="message.category" size="small" effect="plain">
+                      {{ categoryName(message.category) }}
+                    </el-tag>
+                    <el-tag
+                      v-if="message.priority"
+                      size="small"
+                      effect="plain"
+                      :type="priorityTag(message.priority)"
+                    >
+                      {{ priorityName(message.priority) }}
+                    </el-tag>
+                    <span v-if="message.ticketNo" class="ticket-no">{{ message.ticketNo }}</span>
+                  </div>
                   <div class="message-text">{{ message.content }}</div>
                   <el-collapse v-if="message.sources?.length" class="source-list">
                     <el-collapse-item :name="String(index)">
@@ -147,62 +126,64 @@
 
             <article v-if="sending" class="message assistant">
               <div class="assistant-row">
-                <div class="assistant-avatar">
-                  <el-icon><ChatDotRound /></el-icon>
-                </div>
-                <div class="typing" aria-label="正在生成回答">
-                  <span></span><span></span><span></span>
-                </div>
+                <div class="assistant-avatar"><el-icon><Service /></el-icon></div>
+                <div class="typing"><span></span><span></span><span></span></div>
               </div>
             </article>
           </div>
         </div>
 
         <div class="composer-area" :class="{ centered: !messages.length }">
-          <div class="composer">
-            <el-input
-              v-model="draft"
-              type="textarea"
-              :autosize="{ minRows: 1, maxRows: 6 }"
-              resize="none"
-              :placeholder="isReady ? '给 AI 发送消息' : '当前服务暂不可用'"
-              :disabled="!isReady || sending || loadingConversation"
-              @keydown="handleComposerKeydown"
-            />
-            <el-button
-              class="send-button"
-              type="primary"
-              circle
-              :loading="sending"
-              :disabled="!draft.trim() || !isReady || loadingConversation"
-              aria-label="发送消息"
-              @click="sendMessage"
-            >
-              <el-icon v-if="!sending"><Promotion /></el-icon>
-            </el-button>
+          <div class="ticket-composer">
+            <div class="issue-row">
+              <span class="issue-label">问题类型</span>
+              <el-select
+                v-model="issueType"
+                class="issue-select"
+                :disabled="!isReady || sending || loadingConversation"
+              >
+                <el-option v-for="item in issueTypes" :key="item" :label="item" :value="item" />
+              </el-select>
+            </div>
+            <div class="message-row">
+              <el-input
+                v-model="draft"
+                type="textarea"
+                :autosize="{ minRows: 1, maxRows: 6 }"
+                resize="none"
+                :placeholder="isReady ? '填写问题内容' : '当前服务暂不可用'"
+                :disabled="!isReady || sending || loadingConversation"
+                @keydown="handleComposerKeydown"
+              />
+              <el-button
+                class="send-button"
+                type="primary"
+                circle
+                :loading="sending"
+                :disabled="!draft.trim() || !isReady || loadingConversation"
+                aria-label="提交问题"
+                @click="sendMessage"
+              >
+                <el-icon v-if="!sending"><Promotion /></el-icon>
+              </el-button>
+            </div>
           </div>
         </div>
       </main>
     </div>
 
-    <el-drawer
-      v-model="historyOpen"
-      class="mobile-history-drawer"
-      direction="ltr"
-      size="min(86vw, 320px)"
-      :with-header="false"
-    >
+    <el-drawer v-model="historyOpen" direction="ltr" size="min(86vw, 320px)" :with-header="false">
       <div class="mobile-history-panel">
-        <el-button class="new-chat-button" @click="startNewConversation">
+        <el-button class="new-ticket-button" @click="startNewTicket">
           <el-icon><Plus /></el-icon>
-          <span>新建对话</span>
+          <span>新建工单</span>
         </el-button>
         <div class="history-heading">
           <span>会话索引</span>
           <span class="history-count">{{ String(conversations.length).padStart(2, '0') }}</span>
         </div>
         <div class="history-list">
-          <div v-if="!conversations.length" class="history-empty">暂无对话记录</div>
+          <div v-if="!conversations.length" class="history-empty">暂无会话记录</div>
           <button
             v-for="(item, index) in conversations"
             :key="item.conversationId"
@@ -213,8 +194,8 @@
           >
             <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
-              <span class="history-title">{{ item.title || '新对话' }}</span>
-              <span class="history-preview">{{ item.lastMessage || '等待开始对话' }}</span>
+              <span class="history-title">{{ item.title || '新工单' }}</span>
+              <span class="history-preview">{{ item.lastMessage || '等待提交问题' }}</span>
             </span>
           </button>
         </div>
@@ -223,38 +204,37 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup lang="ts" name="PublicCustomerServiceAi">
 import { ElMessageBox } from 'element-plus'
 import {
-  createPublicChatConversation,
-  deletePublicChatConversation,
-  getPublicChatBootstrap,
-  getPublicChatConversation,
-  listPublicChatScenes,
-  sendPublicChatMessage
-} from '@/api/publicChat'
+  createCustomerServiceAiConversation,
+  deleteCustomerServiceAiConversation,
+  getCustomerServiceAiBootstrap,
+  getCustomerServiceAiConversation,
+  sendCustomerServiceAiMessage
+} from '@/api/publicCustomerService'
 import type {
-  PublicChatConversation,
-  PublicChatMessage,
-  PublicChatScene
+  PublicCustomerServiceConversation,
+  PublicCustomerServiceMessage
 } from '@/types'
 
-const props = defineProps<{
-  scene: string
-}>()
-
-const fallbackScenes: PublicChatScene[] = [
-  { scene: 'personal-info', title: '个人信息', welcomeMessage: '你好，我可以帮你整理和分析个人信息。' },
-  { scene: 'customer-service', title: '智能客服', welcomeMessage: '你好，我是智能客服，请告诉我你需要咨询的问题。' }
+const issueTypes = [
+  '物流查询',
+  '退货政策',
+  '普通退款（500元以下）',
+  '大额退款（500元以上）',
+  '账号问题',
+  '投诉',
+  '纠纷',
+  '产品质量',
+  '其他问题'
 ]
-
-const router = useRouter()
-const scenes = ref<PublicChatScene[]>(fallbackScenes)
-const conversations = ref<PublicChatConversation[]>([])
-const messages = ref<PublicChatMessage[]>([])
+const conversations = ref<PublicCustomerServiceConversation[]>([])
+const messages = ref<PublicCustomerServiceMessage[]>([])
 const activeConversationId = ref<string>()
-const sceneTitle = ref('')
-const sceneWelcome = ref('')
+const sceneTitle = ref('智能客服')
+const sceneWelcome = ref('请选择问题类型并填写具体内容。')
+const issueType = ref('物流查询')
 const configured = ref(false)
 const enabled = ref(false)
 const draft = ref('')
@@ -264,53 +244,22 @@ const sending = ref(false)
 const historyOpen = ref(false)
 const messageListRef = ref<HTMLElement>()
 const visitorId = getVisitorId()
-const activeConversationStorageKey = computed(() => `public-ai-active:${props.scene}`)
-
-const scene = computed(() => props.scene)
+const activeConversationStorageKey = 'public-customer-service-active'
 const isReady = computed(() => configured.value && enabled.value)
 
-watch(
-  scene,
-  async () => {
-    await loadScene()
-  },
-  { immediate: true }
-)
-
-async function loadScenes() {
-  try {
-    const response = await listPublicChatScenes()
-    if (response.data?.length) {
-      scenes.value = response.data
-    }
-  } catch {
-    scenes.value = fallbackScenes
-  }
-}
+onMounted(loadScene)
 
 async function loadScene() {
-  sending.value = false
-  draft.value = ''
-  messages.value = []
-  conversations.value = []
-  activeConversationId.value = undefined
-  historyOpen.value = false
-
-  const fallback = fallbackScenes.find((item) => item.scene === scene.value)
-  sceneTitle.value = fallback?.title || 'AI 对话'
-  sceneWelcome.value = fallback?.welcomeMessage || '你好，有什么可以帮你的？'
-
   historyLoading.value = true
   try {
-    const response = await getPublicChatBootstrap(scene.value, visitorId)
-    if (response.data) {
-      sceneTitle.value = response.data.scene.title
-      sceneWelcome.value = response.data.scene.welcomeMessage
-      configured.value = response.data.configured
-      enabled.value = response.data.enabled
-      conversations.value = response.data.conversations || []
-      restoreActiveConversation()
-    }
+    const response = await getCustomerServiceAiBootstrap(visitorId)
+    if (!response.data) return
+    sceneTitle.value = response.data.scene.title
+    sceneWelcome.value = response.data.scene.welcomeMessage
+    configured.value = response.data.configured
+    enabled.value = response.data.enabled
+    conversations.value = response.data.conversations || []
+    restoreActiveConversation()
   } finally {
     historyLoading.value = false
   }
@@ -319,13 +268,11 @@ async function loadScene() {
 async function loadConversations() {
   historyLoading.value = true
   try {
-    const response = await getPublicChatBootstrap(scene.value, visitorId)
+    const response = await getCustomerServiceAiBootstrap(visitorId)
     if (response.data) {
       conversations.value = response.data.conversations || []
       configured.value = response.data.configured
       enabled.value = response.data.enabled
-      sceneTitle.value = response.data.scene.title
-      sceneWelcome.value = response.data.scene.welcomeMessage
     }
   } finally {
     historyLoading.value = false
@@ -333,30 +280,25 @@ async function loadConversations() {
 }
 
 function restoreActiveConversation() {
-  const conversationId = localStorage.getItem(activeConversationStorageKey.value)
-  if (!conversationId || !conversations.value.some((item: PublicChatConversation) => item.conversationId === conversationId)) {
-    localStorage.removeItem(activeConversationStorageKey.value)
+  const conversationId = localStorage.getItem(activeConversationStorageKey)
+  if (
+    !conversationId ||
+    !conversations.value.some(
+      (item: PublicCustomerServiceConversation) => item.conversationId === conversationId
+    )
+  ) {
+    localStorage.removeItem(activeConversationStorageKey)
     return
   }
   openConversation(conversationId)
 }
 
-function switchScene(targetScene: string) {
-  if (targetScene === scene.value) return
-  const path = targetScene === 'personal-info'
-    ? '/'
-    : targetScene === 'customer-service'
-      ? '/customer-service'
-      : `/chat/${targetScene}`
-  router.push(path)
-}
-
-function startNewConversation() {
+function startNewTicket() {
   activeConversationId.value = undefined
   messages.value = []
   draft.value = ''
   historyOpen.value = false
-  localStorage.removeItem(activeConversationStorageKey.value)
+  localStorage.removeItem(activeConversationStorageKey)
   nextTick(focusComposer)
 }
 
@@ -368,11 +310,11 @@ async function openConversation(conversationId: string) {
   loadingConversation.value = true
   historyOpen.value = false
   try {
-    const response = await getPublicChatConversation(scene.value, conversationId, visitorId)
+    const response = await getCustomerServiceAiConversation(conversationId, visitorId)
     if (!response.data) return
     activeConversationId.value = conversationId
     messages.value = response.data.messages || []
-    localStorage.setItem(activeConversationStorageKey.value, conversationId)
+    localStorage.setItem(activeConversationStorageKey, conversationId)
     await scrollToBottom()
   } finally {
     loadingConversation.value = false
@@ -380,28 +322,26 @@ async function openConversation(conversationId: string) {
 }
 
 async function removeConversation(conversationId: string) {
-  await ElMessageBox.confirm('删除后无法恢复，确定删除这条对话吗？', '删除对话', {
+  await ElMessageBox.confirm('删除后无法恢复，确定删除这条会话吗？', '删除会话', {
     confirmButtonText: '删除',
     cancelButtonText: '取消',
     type: 'warning'
   })
-  await deletePublicChatConversation(scene.value, conversationId, visitorId)
+  await deleteCustomerServiceAiConversation(conversationId, visitorId)
   conversations.value = conversations.value.filter(
-    (item: PublicChatConversation) => item.conversationId !== conversationId
+    (item: PublicCustomerServiceConversation) => item.conversationId !== conversationId
   )
   if (activeConversationId.value === conversationId) {
-    startNewConversation()
+    startNewTicket()
   }
 }
 
 async function sendMessage() {
   const question = draft.value.trim()
-  if (!question || sending.value || loadingConversation.value || !isReady.value) {
-    return
-  }
+  if (!question || sending.value || loadingConversation.value || !isReady.value) return
 
   sending.value = true
-  const optimisticMessage: PublicChatMessage = { role: 'user', content: question }
+  const optimisticMessage: PublicCustomerServiceMessage = { role: 'user', content: question }
   messages.value.push(optimisticMessage)
   draft.value = ''
   await scrollToBottom()
@@ -409,24 +349,27 @@ async function sendMessage() {
   try {
     let conversationId = activeConversationId.value
     if (!conversationId) {
-      const createResponse = await createPublicChatConversation(scene.value, visitorId)
-      if (!createResponse.data) {
-        throw new Error('创建对话失败')
-      }
+      const createResponse = await createCustomerServiceAiConversation(visitorId)
+      if (!createResponse.data) throw new Error('创建会话失败')
       conversationId = createResponse.data.conversationId
       activeConversationId.value = conversationId
-      localStorage.setItem(activeConversationStorageKey.value, conversationId)
+      localStorage.setItem(activeConversationStorageKey, conversationId)
     }
 
-    const response = await sendPublicChatMessage(scene.value, conversationId, visitorId, question)
-    if (!response.data) {
-      throw new Error('发送消息失败')
-    }
+    const response = await sendCustomerServiceAiMessage(
+      conversationId,
+      visitorId,
+      issueType.value,
+      question
+    )
+    if (!response.data) throw new Error('提交问题失败')
     messages.value.splice(-1, 1, response.data.userMessage, response.data.assistantMessage)
     await loadConversations()
     await scrollToBottom()
   } catch {
-    messages.value = messages.value.filter((message: PublicChatMessage) => message !== optimisticMessage)
+    messages.value = messages.value.filter(
+      (message: PublicCustomerServiceMessage) => message !== optimisticMessage
+    )
     draft.value = question
   } finally {
     sending.value = false
@@ -440,56 +383,52 @@ function handleComposerKeydown(event: KeyboardEvent) {
   }
 }
 
+function categoryName(category: string) {
+  return category === 'complex' ? '复杂工单' : '标准问题'
+}
+
+function priorityName(priority: string) {
+  return { low: '低优先级', medium: '中优先级', high: '高优先级' }[priority] || priority
+}
+
+function priorityTag(priority: string) {
+  return priority === 'high' ? 'danger' : priority === 'medium' ? 'warning' : 'info'
+}
+
 async function scrollToBottom() {
   await nextTick()
   const element = messageListRef.value
-  if (element) {
-    element.scrollTop = element.scrollHeight
-  }
+  if (element) element.scrollTop = element.scrollHeight
 }
 
 function focusComposer() {
-  const textarea = document.querySelector<HTMLTextAreaElement>('.composer textarea')
-  textarea?.focus()
-}
-
-function formatHistoryTime(value?: string) {
-  if (!value) return ''
-  const date = new Date(value.replace(' ', 'T'))
-  if (Number.isNaN(date.getTime())) return ''
-  const now = new Date()
-  if (date.toDateString() === now.toDateString()) {
-    return date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
-  }
-  return date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+  document.querySelector<HTMLTextAreaElement>('.message-row textarea')?.focus()
 }
 
 function getVisitorId() {
-  const key = 'public-ai-visitor-id'
+  const key = 'public-customer-service-visitor-id'
   const existing = localStorage.getItem(key)
   if (existing) return existing
   const bytes = new Uint8Array(18)
   crypto.getRandomValues(bytes)
-  const value = `visitor_${Array.from(bytes, (item) => item.toString(36).padStart(2, '0')).join('')}`
+  const value = `service_${Array.from(bytes, (item) => item.toString(36).padStart(2, '0')).join('')}`
   localStorage.setItem(key, value)
   return value
 }
-
-loadScenes()
 </script>
 
 <style scoped lang="scss">
-.public-chat {
-  --ink: #18211e;
-  --ink-soft: #4f5c57;
-  --muted: #7c8782;
-  --paper: #f3f5f0;
-  --paper-raised: #fbfcf8;
-  --line: #dce2da;
-  --line-strong: #c8d0c7;
-  --accent: #0b6a57;
-  --accent-soft: #e4efe9;
-  --signal: #ad5b28;
+.customer-ai-page {
+  --ink: #1f2422;
+  --ink-soft: #58615e;
+  --muted: #7e8784;
+  --paper: #f3f4f2;
+  --paper-raised: #fcfcfa;
+  --line: #dde0dc;
+  --line-strong: #c8ceca;
+  --accent: #b54f2f;
+  --accent-soft: #f5e7e1;
+  --info: #315f9d;
   height: 100vh;
   min-height: 560px;
   overflow: hidden;
@@ -499,8 +438,6 @@ loadScenes()
 }
 
 .public-header {
-  position: relative;
-  z-index: 20;
   height: 64px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -519,7 +456,6 @@ loadScenes()
 }
 
 .brand-mark {
-  position: relative;
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -527,98 +463,35 @@ loadScenes()
   justify-content: center;
   border-radius: 3px;
   background: var(--ink);
-  color: #f6faf6;
+  color: #f8faf8;
   font-size: 16px;
 }
 
-.brand-mark::after {
-  position: absolute;
-  right: -4px;
-  bottom: -4px;
-  width: 8px;
-  height: 8px;
-  border: 2px solid var(--paper-raised);
-  border-radius: 50%;
-  background: var(--accent);
-  content: "";
-}
-
-.brand-name {
-  font-size: 15px;
+.brand-name,
+.page-label {
   font-weight: 700;
-  letter-spacing: 0;
 }
 
-.scene-switcher {
-  display: flex;
-  align-self: stretch;
-  align-items: flex-end;
-  gap: 28px;
-  max-width: min(72vw, 760px);
-  overflow-x: auto;
-  padding: 0;
-  background: transparent;
-  scrollbar-width: none;
-}
-
-.scene-switcher::-webkit-scrollbar {
-  display: none;
-}
-
-.scene-switcher button {
-  min-width: auto;
-  height: 63px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 2px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  background: transparent;
+.page-label {
   color: var(--ink-soft);
-  font: inherit;
-  font-size: 14px;
-  cursor: pointer;
-  transition: color 0.18s, border-color 0.18s;
-}
-
-.scene-switcher button:hover {
-  color: var(--ink);
-}
-
-.scene-switcher button.active {
-  border-bottom-color: var(--accent);
-  color: var(--ink);
-  font-weight: 700;
-}
-
-.scene-index {
-  color: var(--muted);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 10px;
-  font-weight: 500;
-}
-
-.scene-switcher button.active .scene-index {
-  color: var(--accent);
+  font-size: 13px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 16px;
 }
 
-.admin-entry {
+.header-link {
   padding-bottom: 2px;
   border-bottom: 1px solid var(--line-strong);
   color: var(--ink-soft);
   font-size: 13px;
 }
 
-.admin-entry:hover {
+.header-link:hover {
   border-bottom-color: var(--accent);
   color: var(--accent);
 }
@@ -640,22 +513,22 @@ loadScenes()
   background: var(--paper);
 }
 
-.new-chat-button {
+.new-ticket-button {
   width: 100%;
   height: 40px;
   justify-content: flex-start;
   gap: 8px;
-  border-color: var(--ink);
+  border-color: var(--accent);
   border-radius: 4px;
-  background: var(--ink);
-  color: #f7faf7;
+  background: var(--accent);
+  color: #fff;
   font-weight: 600;
 }
 
-.new-chat-button:hover,
-.new-chat-button:focus {
-  border-color: var(--accent);
-  background: var(--accent);
+.new-ticket-button:hover,
+.new-ticket-button:focus {
+  border-color: var(--ink);
+  background: var(--ink);
   color: #fff;
 }
 
@@ -667,15 +540,13 @@ loadScenes()
   padding: 0 4px;
   border-bottom: 1px solid var(--line);
   color: var(--muted);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 10px;
-  letter-spacing: 0;
   text-transform: uppercase;
 }
 
 .history-count {
   color: var(--accent);
-  font-variant-numeric: tabular-nums;
 }
 
 .history-list {
@@ -688,15 +559,6 @@ loadScenes()
   padding: 32px 6px;
   color: var(--muted);
   font-size: 12px;
-  text-align: left;
-}
-
-.history-empty span {
-  display: block;
-  margin-bottom: 4px;
-  color: var(--line-strong);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 10px;
 }
 
 .history-item {
@@ -708,9 +570,9 @@ loadScenes()
   gap: 8px;
   margin-bottom: 1px;
   padding: 8px 30px 8px 12px;
-  border-top: 1px solid transparent;
-  border-bottom: 1px solid transparent;
+  border: 0;
   border-left: 2px solid transparent;
+  border-bottom: 1px solid transparent;
   border-radius: 0;
   background: transparent;
   color: var(--ink);
@@ -719,33 +581,27 @@ loadScenes()
   cursor: pointer;
 }
 
-.history-item:hover {
-  border-bottom-color: var(--line);
-  background: rgba(255, 255, 255, 0.54);
-}
-
+.history-item:hover,
 .history-item.active {
-  border-left-color: var(--accent);
   border-bottom-color: var(--line);
   background: var(--accent-soft);
 }
 
-.history-content {
-  min-width: 0;
-  flex: 1;
+.history-item.active {
+  border-left-color: var(--accent);
 }
 
 .history-index {
   width: 18px;
   flex: 0 0 18px;
   color: var(--line-strong);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  font-family: "Cascadia Mono", Consolas, monospace;
   font-size: 9px;
-  font-variant-numeric: tabular-nums;
 }
 
-.history-item.active .history-index {
-  color: var(--accent);
+.history-content {
+  min-width: 0;
+  flex: 1;
 }
 
 .history-title,
@@ -762,15 +618,9 @@ loadScenes()
   font-weight: 650;
 }
 
-.history-preview,
-.history-time {
+.history-preview {
   color: var(--muted);
   font-size: 10px;
-}
-
-.history-time {
-  flex: 0 0 auto;
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
 }
 
 .history-delete {
@@ -781,10 +631,6 @@ loadScenes()
 
 .history-item:hover .history-delete {
   opacity: 1;
-}
-
-.history-item:hover .history-time {
-  opacity: 0;
 }
 
 .chat-main {
@@ -799,59 +645,43 @@ loadScenes()
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 38px 28px 164px;
+  padding: 38px 28px 208px;
 }
 
 .message-scroll.empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 130px;
+  padding-bottom: 170px;
 }
 
 .welcome {
-  position: relative;
   max-width: 660px;
   padding: 0 20px;
   text-align: center;
 }
 
 .welcome-mark {
-  position: relative;
   width: 48px;
   height: 48px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 20px;
-  border: 1px solid var(--ink);
   border-radius: 4px;
-  background: var(--ink);
-  color: #f7faf7;
-  font-size: 22px;
-}
-
-.welcome-mark::after {
-  position: absolute;
-  right: -5px;
-  bottom: 10px;
-  width: 10px;
-  height: 2px;
   background: var(--accent);
-  content: "";
+  color: #fff;
+  font-size: 22px;
 }
 
 .welcome h1 {
   margin: 0 0 12px;
-  color: var(--ink);
-  font-family: "Songti SC", "Noto Serif SC", "SimSun", serif;
+  font-family: "Songti SC", "Noto Serif SC", SimSun, serif;
   font-size: clamp(28px, 3vw, 38px);
   font-weight: 650;
-  line-height: 1.2;
 }
 
 .welcome p {
-  max-width: 580px;
   margin: 0 auto;
   color: var(--ink-soft);
   font-size: 14px;
@@ -859,7 +689,7 @@ loadScenes()
 }
 
 .welcome .service-unavailable {
-  color: var(--signal);
+  color: var(--accent);
 }
 
 .message-column {
@@ -879,10 +709,9 @@ loadScenes()
 .user-bubble {
   max-width: min(620px, 86%);
   padding: 11px 14px;
-  border: 1px solid #cfd9d1;
+  border: 1px solid #d7c9c3;
   border-radius: 6px 6px 2px 6px;
   background: var(--accent-soft);
-  color: var(--ink);
   font-size: 14px;
   line-height: 1.75;
   white-space: pre-wrap;
@@ -904,7 +733,6 @@ loadScenes()
   justify-content: center;
   border: 1px solid var(--line-strong);
   border-radius: 3px;
-  background: var(--paper-raised);
   color: var(--accent);
   font-size: 15px;
 }
@@ -915,8 +743,21 @@ loadScenes()
   padding-top: 3px;
 }
 
+.message-meta {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+}
+
+.ticket-no {
+  color: var(--info);
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 11px;
+}
+
 .message-text {
-  color: var(--ink);
   font-size: 14px;
   line-height: 1.9;
   white-space: pre-wrap;
@@ -936,7 +777,6 @@ loadScenes()
   :deep(.el-collapse-item__header) {
     height: 34px;
     color: var(--ink-soft);
-    font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
     font-size: 10px;
   }
 
@@ -954,13 +794,12 @@ loadScenes()
 .source-item {
   margin-top: 8px;
   padding: 10px 12px;
-  border-left: 2px solid var(--accent);
+  border-left: 2px solid var(--info);
   background: var(--paper);
 }
 
 .source-name {
   margin-bottom: 5px;
-  color: var(--ink);
   font-size: 12px;
   font-weight: 700;
 }
@@ -984,9 +823,8 @@ loadScenes()
 .typing span {
   width: 8px;
   height: 3px;
-  border-radius: 0;
   background: var(--accent);
-  animation: public-typing 1.1s infinite ease-in-out;
+  animation: service-typing 1.1s infinite ease-in-out;
 }
 
 .typing span:nth-child(2) {
@@ -1010,40 +848,56 @@ loadScenes()
 .composer-area.centered {
   position: fixed;
   right: 0;
-  bottom: 16vh;
+  bottom: 12vh;
   left: 248px;
   padding: 0 24px;
   border-top: 0;
   background: transparent;
 }
 
-.composer {
+.ticket-composer {
   width: min(840px, 100%);
-  min-height: 54px;
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
   margin: 0 auto;
-  padding: 8px 9px 8px 15px;
+  padding: 10px 10px 10px 14px;
   border: 1px solid var(--line-strong);
   border-radius: 6px;
   background: #fff;
-  box-shadow: 0 1px 0 rgba(24, 33, 30, 0.06);
 }
 
-.composer:focus-within {
+.ticket-composer:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-.composer :deep(.el-textarea__inner) {
-  min-height: 36px !important;
-  padding: 7px 2px;
+.issue-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+.issue-label {
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.issue-select {
+  width: 180px;
+}
+
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding-top: 5px;
+}
+
+.message-row :deep(.el-textarea__inner) {
+  min-height: 40px !important;
+  padding: 8px 2px;
   border: 0;
   box-shadow: none !important;
-  color: var(--ink);
-  font-size: 14px;
-  line-height: 1.6;
 }
 
 .send-button {
@@ -1055,11 +909,6 @@ loadScenes()
   --el-button-border-color: var(--accent);
   --el-button-hover-bg-color: var(--ink);
   --el-button-hover-border-color: var(--ink);
-  --el-button-active-bg-color: var(--ink);
-  --el-button-active-border-color: var(--ink);
-  --el-button-disabled-bg-color: var(--line);
-  --el-button-disabled-border-color: var(--line);
-  --el-button-disabled-text-color: var(--muted);
 }
 
 .mobile-history-panel {
@@ -1072,7 +921,7 @@ loadScenes()
   height: calc(100% - 84px);
 }
 
-@keyframes public-typing {
+@keyframes service-typing {
   0%,
   60%,
   100% {
@@ -1088,31 +937,17 @@ loadScenes()
 
 @media (max-width: 820px) {
   .public-header {
-    grid-template-columns: auto 1fr auto;
-    gap: 10px;
     height: 60px;
     padding: 0 12px;
   }
 
   .brand-name,
-  .admin-entry {
+  .header-link {
     display: none;
   }
 
-  .scene-switcher {
+  .page-label {
     justify-self: center;
-    gap: 18px;
-  }
-
-  .scene-switcher button {
-    min-width: auto;
-    height: 59px;
-    padding: 0 1px;
-    font-size: 13px;
-  }
-
-  .scene-index {
-    display: none;
   }
 
   .mobile-history-button {
@@ -1129,26 +964,7 @@ loadScenes()
   }
 
   .message-scroll {
-    padding: 28px 14px 148px;
-  }
-
-  .message-scroll.empty {
-    padding-bottom: 120px;
-  }
-
-  .welcome {
-    padding: 0 10px;
-  }
-
-  .welcome-mark {
-    width: 46px;
-    height: 46px;
-    margin-bottom: 14px;
-    font-size: 22px;
-  }
-
-  .welcome h1 {
-    font-size: 26px;
+    padding: 28px 14px 192px;
   }
 
   .composer-area {
@@ -1156,30 +972,13 @@ loadScenes()
   }
 
   .composer-area.centered {
-    bottom: 12vh;
+    bottom: 8vh;
     left: 0;
     padding: 0 12px;
   }
 
-  .composer {
-    min-height: 50px;
-    padding-left: 13px;
-    border-radius: 5px;
-  }
-
-  .assistant-row {
-    gap: 9px;
-  }
-
-  .assistant-avatar {
-    width: 30px;
-    height: 30px;
-    flex-basis: 30px;
-  }
-
-  .message-text,
-  .user-bubble {
-    font-size: 14px;
+  .issue-select {
+    width: 160px;
   }
 }
 </style>

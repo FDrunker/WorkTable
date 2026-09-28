@@ -240,17 +240,23 @@ Controller：`CustomerServiceController`
 
 `config` 和 `chat` 支持 `scene` 查询参数，默认值为 `admin`；可选场景为 `admin`、`personal-info`、`customer-service`。
 
-Controller：`PublicAiChatController`，整个 Controller 标记 `@Anonymous`，对应前端免登录主页。
+公开端拆成两个独立 Controller，均标记 `@Anonymous`：
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /public/ai-chat/scenes` | 获取公开场景、标题和欢迎语 |
-| `GET /public/ai-chat/{scene}/bootstrap` | 获取场景状态和访客历史会话 |
-| `POST /public/ai-chat/{scene}/conversations` | 新建匿名会话 |
-| `GET /public/ai-chat/{scene}/conversations` | 获取访客会话列表 |
-| `GET /public/ai-chat/{scene}/conversations/{conversationId}` | 获取会话消息详情 |
-| `DELETE /public/ai-chat/{scene}/conversations/{conversationId}` | 删除访客自己的会话和消息 |
-| `POST /public/ai-chat/{scene}/conversations/{conversationId}/messages` | 提问、调用知识库问答并保存双方消息 |
+| `GET /public/resume-ai/bootstrap` | 个人简历 AI 状态和历史会话 |
+| `POST /public/resume-ai/conversations` | 新建简历 AI 匿名会话 |
+| `POST /public/resume-ai/conversations/{conversationId}/messages` | 检索简历知识库并直接回答 |
+| `GET /public/customer-service-ai/bootstrap` | 智能客服状态和历史会话 |
+| `POST /public/customer-service-ai/conversations` | 新建智能客服匿名会话 |
+| `POST /public/customer-service-ai/conversations/{conversationId}/messages` | 分类工单，标准问题回答或复杂问题创建人工工单 |
+
+Controller：`CustomerServiceTicketController`
+
+| 方法与路径 | 说明 |
+| --- | --- |
+| `GET /knowledge/customer-service/tickets` | 按工单号、状态、优先级和问题类型查询 |
+| `POST /knowledge/customer-service/tickets/{ticketId}/handle` | 批准、修改后批准或升级处理 |
 
 ### 6.4 微信归档
 
@@ -272,7 +278,7 @@ Controller：`ruoyi-admin/.../web/controller/wechat/WechatChatController.java`
 | `GET /wechat/analysis/{analysisId}` | 读取分析详情 |
 | `DELETE /wechat/analysis/{analysisIds}` | 删除历史分析记录 |
 
-后台自研 Controller 使用 `@PreAuthorize`；`PublicAiChatController` 是明确的匿名执行边界。前端菜单和按钮权限必须与 `Backend/sql/` 中的权限标识保持一致。
+后台自研 Controller 使用 `@PreAuthorize`；`PublicResumeAiController` 和 `PublicCustomerServiceAiController` 是明确的匿名执行边界。前端菜单和按钮权限必须与 `Backend/sql/` 中的权限标识保持一致。
 
 ## 7. MySQL 数据模型
 
@@ -395,16 +401,24 @@ POST /knowledge/ai-chat/chat
 - 多个知识库中只有一个失败时继续使用其他知识库；全部失败才报错。
 - 回答 JSON 解析失败时退化为原始模型文本。
 
-公开链路在 `PublicAiChatService` 中复用上述问答编排：
+公开链路已经拆成两套独立业务服务：
 
 ```text
-POST /public/ai-chat/{scene}/conversations/{conversationId}/messages
-  -> 校验 scene 和 visitorId 会话归属
+POST /public/resume-ai/conversations/{conversationId}/messages
+  -> ResumeAiChatService 校验 visitorId 会话归属
   -> 读取最近 10 条持久化消息作为历史
-  -> CustomerServiceService 执行意图识别、检索与回答
+  -> KnowledgeQaService 执行知识库检索与标准回答
   -> 写入 user / assistant 两条 ai_chat_message
   -> 首条消息用问题摘要生成会话标题
-  -> 返回本次回复，前端刷新历史列表
+  -> 直接返回回答
+
+POST /public/customer-service-ai/conversations/{conversationId}/messages
+  -> CustomerServiceAiChatService 接收 issueType + question
+  -> LLM 输出 category=standard/complex、reason、priority
+  -> standard: KnowledgeQaService 检索后生成标准回答
+  -> complex: LLM 预分析 summary/solution/suggestedReply
+  -> CustomerServiceTicketService 写入 ai_customer_service_ticket
+  -> 返回“已记录您的问题，等待人工给您处理”和工单号
 ```
 
 ## 11. 微信归档链路

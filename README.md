@@ -93,7 +93,7 @@ npm run build:prod   # 生产构建
 
 开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8090`（见 `vite.config.ts`）。
 
-- 免登录主页：`http://localhost/` 或 `http://localhost/personal-info`
+- 免登录个人简历 AI：`http://localhost/` 或 `http://localhost/personal-info`
 - 免登录智能客服：`http://localhost/customer-service`
 - 后台管理：`http://localhost/admin/login`
 
@@ -109,8 +109,10 @@ npm run build:prod   # 生产构建
 - **模型管理**：支持 OpenAI / ChatGPT、DeepSeek、Ollama，以及 TypeSafe Jev 自定义适配器。模型具有 `embedding`、`chat`、`system-one` 类型、启用状态、默认标记和连通性测试结果。
 - **密钥安全**：API Key 使用 AES-GCM 加密后存入数据库，查询接口只返回掩码。主密钥配置为 `knowledge.encryption-key`，生产环境应通过 `WORKTABLE_KNOWLEDGE_KEY` 环境变量覆盖。
 - **本地文件**：上传的 Markdown 先写入 `knowledge.storage-path`，成功写入 Chroma 后删除暂存文件；原文正文保存在 MySQL 中，供后续编辑和重建使用。
-- **AI对话**：顶级菜单新增「AI对话」。设置中可选择对话模型、向量模型、多个知识库集合和 TopK（1-20）。问答时先识别用户意图，再按配置检索知识片段；知识不足或问题含义不明确时，会返回澄清问题而不是猜测答案。回答会附带本次检索到的知识来源。
-- **公开 AI 对话**：主页顶部可切换「个人信息」和「智能客服」，两个场景都支持新建对话和持久化历史记录。后台 AI 对话页可分别配置每个场景的页面标题、欢迎语、模型、知识库、TopK 和启停状态。
+- **AI对话设置**：顶级菜单「AI对话」可分别配置「个人简历 AI」和「智能客服」的页面标题、欢迎语、对话模型、向量模型、知识库集合、TopK（1-20）和启停状态。
+- **个人简历 AI**：公开页 `/personal-info` 是一套独立代码，流程固定为“接收问题 → 简历知识库检索 → LLM 生成标准回答 → 直接回复”，支持匿名会话和历史记录。
+- **智能客服 AI**：公开页 `/customer-service` 是另一套独立代码，接收“问题类型 + 内容”。LLM 按 `standard / complex` 分类：标准问题直接检索知识库并生成回答；复杂问题先做摘要、处理方案和建议回复预分析，再创建人工工单并回复“已记录您的问题，等待人工给您处理”。
+- **客服工单页**：后台「客服工单」页面支持按工单号、状态、优先级筛选；人工可编辑优先级、回复内容和备注，并执行「批准」「修改后批准」「升级处理」。
 
 首次启用该模块需要执行：
 
@@ -140,6 +142,12 @@ mysql -uroot -p work_table < Backend/sql/ai-chat-menu.sql
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/public-ai-chat.sql
+```
+
+如果数据库已经执行过旧版公开 AI 对话脚本，为个人简历 AI 与智能客服 AI 拆分、消息分类字段和客服工单表补充迁移：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/resume-customer-service-split.sql
 ```
 
 如果要同步最新的菜单层级调整，将知识库管理和模型管理提升为顶级菜单，并删除「若依官网」菜单，需要执行：

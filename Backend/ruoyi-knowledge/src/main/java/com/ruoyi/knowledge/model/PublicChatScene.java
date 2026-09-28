@@ -11,7 +11,7 @@ import com.ruoyi.common.exception.ServiceException;
 public enum PublicChatScene
 {
     ADMIN("admin", "后台 AI 对话", "你好，有什么可以帮你的？", false),
-    PERSONAL_INFO("personal-info", "个人信息", "你好，我可以帮你整理和分析个人信息。", true),
+    PERSONAL_INFO("personal-info", "个人简历 AI", "你好，我可以依据简历知识库回答你的问题。", true),
     CUSTOMER_SERVICE("customer-service", "智能客服", "你好，我是智能客服，请告诉我你需要咨询的问题。", true);
 
     private final String code;

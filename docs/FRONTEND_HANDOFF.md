@@ -155,7 +155,8 @@ Vite 只配置了开发环境 `/dev-api` 代理。生产环境必须由 Nginx、
 | --- | --- | --- |
 | 知识库管理 | `src/views/knowledge/collection/index.vue` | `src/api/knowledge/collection.ts` |
 | 模型管理 | `src/views/knowledge/model/index.vue` | `src/api/knowledge/model.ts` |
-| AI 对话 | `src/views/knowledge/customerService/index.vue` | `src/api/knowledge/customerService.ts` |
+| AI 对话设置 | `src/views/knowledge/customerService/index.vue` | `src/api/knowledge/customerService.ts` |
+| 客服工单 | `src/views/knowledge/customerServiceTicket/index.vue` | `src/api/knowledge/customerServiceTicket.ts` |
 
 知识库页面的关键行为：
 
@@ -169,24 +170,36 @@ Vite 只配置了开发环境 `/dev-api` 代理。生产环境必须由 Nginx、
 
 模型页面支持 OpenAI/ChatGPT、DeepSeek、Ollama、TypeSafe Jev 的配置和连通性测试。API Key 只应提交明文到后端；后端返回的是 `apiKeyMasked`，修改时留空表示沿用旧值。
 
-AI 对话页面的关键行为：
+AI 对话设置页面的关键行为：
 
-- 页面顶部可切换「后台 AI 对话」「个人信息」「智能客服」三个配置场景。
+- 页面顶部可切换「后台 AI 对话」「个人简历 AI」「智能客服」三个配置场景。
 - 设置包括页面标题、欢迎语、chat 模型、embedding 模型、多个知识库和 TopK 1 到 20。
 - 前端只保留最近 10 轮对话作为历史请求。
 - 回答可以显示意图、置信度、是否请求澄清和实际使用的知识来源。
 - 问答接口超时为 180 秒，适合模型和向量检索的长耗时请求。
 
+客服工单页面的关键行为：
+
+- 列表支持按工单号、处理状态和优先级筛选，最多展示最近 200 条。
+- 详情中展示问题内容、AI 分类理由、预分析摘要和 AI 建议回复草稿。
+- 人工输入区包含优先级、回复内容和处理备注。
+- 自定义动作包括「批准」「修改后批准」「升级处理」，分别写入 `APPROVED`、`MODIFIED`、`ESCALATED` 状态。
+
 ### 免登录 AI 主页
 
-公共页面使用共享组件 `src/views/public/chat.vue`，接口位于 `src/api/publicChat.ts`，类型位于 `src/types/api/publicChat.ts`。
+公共页面拆成两套独立代码，不再共享场景化聊天组件：
 
-- `/` 和 `/personal-info` 指向「个人信息」，`/customer-service` 指向「智能客服」。
-- 顶部中央的场景选项来自 `/public/ai-chat/scenes`，后续新增公开场景时可以复用同一个聊天组件。
-- 浏览器在 `localStorage` 中生成并保存匿名 `visitorId`；会话列表和消息由后端按 `visitorId + scene` 隔离。
-- “新建对话”仅在首次发送时创建数据库会话，避免产生空记录。
-- 左侧历史栏支持打开、刷新和删除会话；移动端使用抽屉展示历史栏。
-- 没有任何消息时显示配置的标题和欢迎语；模型、知识库或启停配置不完整时禁用输入框。
+| 场景 | 页面 | API 与类型 |
+| --- | --- | --- |
+| 个人简历 AI | `src/views/public/resume/index.vue` | `src/api/publicResume.ts`、`src/types/api/publicResume.ts` |
+| 智能客服 AI | `src/views/public/customer-service/index.vue` | `src/api/publicCustomerService.ts`、`src/types/api/publicCustomerService.ts` |
+
+- `/` 和 `/personal-info` 指向个人简历 AI；旧 `/chat/personal-info` 会重定向到 `/personal-info`。
+- `/customer-service` 指向智能客服 AI；旧 `/chat/customer-service` 会重定向到 `/customer-service`。
+- 浏览器分别在 `localStorage` 中生成匿名 `visitorId`；会话列表和消息由后端按 `visitorId + scene` 隔离。
+- 两页均支持新建、打开、刷新和删除历史会话，移动端使用抽屉展示历史栏。
+- 简历页只需填写问题；客服页提交前必须选择问题类型并填写内容。
+- 客服复杂问题回复会展示分类、优先级和工单号，知识来源只在标准问题回复出现。
 
 ### 微信聊天归档
 
@@ -279,4 +292,6 @@ npx vue-tsc --noEmit
 7. `Frontend/src/views/knowledge/collection/index.vue`
 8. `Frontend/src/views/knowledge/customerService/index.vue`
 9. `Frontend/src/views/wechat/chat/index.vue`
-10. `Frontend/src/views/public/chat.vue`
+10. `Frontend/src/views/public/resume/index.vue`
+11. `Frontend/src/views/public/customer-service/index.vue`
+12. `Frontend/src/views/knowledge/customerServiceTicket/index.vue`

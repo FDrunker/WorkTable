@@ -27,6 +27,12 @@ public class AiChatMessage extends BaseEntity
 
     private String sourcesJson;
 
+    private String category;
+
+    private String priority;
+
+    private String ticketNo;
+
     private Date createTime;
 
     public Long getMessageId()
@@ -107,6 +113,36 @@ public class AiChatMessage extends BaseEntity
     public void setSourcesJson(String sourcesJson)
     {
         this.sourcesJson = sourcesJson;
+    }
+
+    public String getCategory()
+    {
+        return category;
+    }
+
+    public void setCategory(String category)
+    {
+        this.category = category;
+    }
+
+    public String getPriority()
+    {
+        return priority;
+    }
+
+    public void setPriority(String priority)
+    {
+        this.priority = priority;
+    }
+
+    public String getTicketNo()
+    {
+        return ticketNo;
+    }
+
+    public void setTicketNo(String ticketNo)
+    {
+        this.ticketNo = ticketNo;
     }
 
     @Override

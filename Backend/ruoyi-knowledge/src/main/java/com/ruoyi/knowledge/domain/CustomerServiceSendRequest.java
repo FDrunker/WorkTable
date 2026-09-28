@@ -1,10 +1,11 @@
 package com.ruoyi.knowledge.domain;
 
 /**
- * 公开 AI 对话提问。
+ * 智能客服工单提问。
  */
-public record AiChatSendRequest(
+public record CustomerServiceSendRequest(
         String visitorId,
+        String issueType,
         String question)
 {
 }

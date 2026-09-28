@@ -20,7 +20,7 @@ alter table ai_customer_service_config
 insert ignore into ai_customer_service_config
   (scene, title, welcome_message, top_k, enabled, create_by, create_time)
 values
-  ('personal-info', '个人信息', '你好，我可以帮你整理和分析个人信息。', 5, '1', 'admin', sysdate()),
+  ('personal-info', '个人简历 AI', '你好，我可以依据简历知识库回答你的问题。', 5, '1', 'admin', sysdate()),
   ('customer-service', '智能客服', '你好，我是智能客服，请告诉我你需要咨询的问题。', 5, '1', 'admin', sysdate());
 
 create table if not exists ai_chat_conversation (
@@ -43,6 +43,9 @@ create table if not exists ai_chat_message (
   intent_confidence   double       default null            comment '意图置信度',
   needs_clarification char(1)      not null default '0'    comment '是否需要澄清',
   sources_json        longtext     default null            comment '知识来源 JSON',
+  category            varchar(32)  default null            comment '客服分类 standard/complex',
+  priority            varchar(16)  default null            comment '工单优先级 low/medium/high',
+  ticket_no           varchar(32)  default null            comment '复杂问题工单号',
   create_time         datetime     not null                comment '创建时间',
   primary key (message_id),
   key idx_ai_chat_message_conversation (conversation_id, message_id)

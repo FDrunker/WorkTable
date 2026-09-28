@@ -108,7 +108,7 @@ insert into ai_customer_service_config
   (config_id, scene, title, welcome_message, top_k, enabled, create_by, create_time)
 values
   (1, 'admin', '后台 AI 对话', '你好，有什么可以帮你的？', 5, '1', 'admin', sysdate()),
-  (2, 'personal-info', '个人信息', '你好，我可以帮你整理和分析个人信息。', 5, '1', 'admin', sysdate()),
+  (2, 'personal-info', '个人简历 AI', '你好，我可以依据简历知识库回答你的问题。', 5, '1', 'admin', sysdate()),
   (3, 'customer-service', '智能客服', '你好，我是智能客服，请告诉我你需要咨询的问题。', 5, '1', 'admin', sysdate());
 
 create table ai_chat_conversation (
@@ -131,10 +131,39 @@ create table ai_chat_message (
   intent_confidence   double       default null            comment '意图置信度',
   needs_clarification char(1)      not null default '0'    comment '是否需要澄清',
   sources_json        longtext     default null            comment '知识来源 JSON',
+  category            varchar(32)  default null            comment '客服分类 standard/complex',
+  priority            varchar(16)  default null            comment '工单优先级 low/medium/high',
+  ticket_no           varchar(32)  default null            comment '复杂问题工单号',
   create_time         datetime     not null                comment '创建时间',
   primary key (message_id),
   key idx_ai_chat_message_conversation (conversation_id, message_id)
 ) engine=innodb auto_increment=1 comment='公开AI对话消息表';
+
+create table ai_customer_service_ticket (
+  ticket_id             bigint        not null auto_increment comment '工单ID',
+  ticket_no             varchar(32)   not null                comment '工单号',
+  conversation_id       varchar(64)   not null                comment '来源会话ID',
+  visitor_id            varchar(64)   not null                comment '匿名访客ID',
+  issue_type            varchar(64)   not null                comment '用户选择的问题类型',
+  question              longtext      not null                comment '问题内容',
+  category              varchar(32)   not null                comment '分类结果',
+  classification_reason varchar(500)  default ''              comment '分类理由',
+  priority              varchar(16)   not null default 'medium' comment '优先级',
+  status                varchar(32)   not null default 'WAITING' comment 'WAITING/APPROVED/MODIFIED/ESCALATED',
+  preanalysis_summary   longtext                              comment '问题摘要',
+  preanalysis_solution  longtext                              comment '建议处理方案',
+  suggested_reply       longtext                              comment 'AI 建议回复草稿',
+  handler_reply         longtext                              comment '人工最终回复',
+  handle_note           varchar(1000) default ''              comment '人工处理备注',
+  handled_by            varchar(64)   default null            comment '处理人',
+  handle_time           datetime                              comment '处理时间',
+  create_time           datetime      not null                comment '创建时间',
+  update_time           datetime      not null                comment '更新时间',
+  primary key (ticket_id),
+  unique key uk_ai_customer_service_ticket_no (ticket_no),
+  key idx_ai_customer_service_ticket_status (status, priority, create_time),
+  key idx_ai_customer_service_ticket_conversation (conversation_id)
+) engine=innodb auto_increment=1 comment='智能客服人工处理工单';
 
 -- ----------------------------
 -- 菜单与权限
@@ -145,6 +174,7 @@ delete from sys_menu where menu_id between 3000 and 3099;
 insert into sys_menu values('3001', '知识库管理', '0', '5', 'knowledge-base', 'knowledge/collection/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:collection:list', 'collection', 'admin', sysdate(), '', null, '知识库管理菜单');
 insert into sys_menu values('3002', '模型管理', '0', '6', 'model', 'knowledge/model/index', '', '', 1, 0, 'C', '0', '0', 'knowledge:model:list', 'cpu', 'admin', sysdate(), '', null, 'AI 模型配置菜单');
 insert into sys_menu values('3003', 'AI对话', '0', '7', 'ai-chat', 'knowledge/customerService/index', '', '', 1, 0, 'C', '0', '0', 'ai:chat:list', 'message', 'admin', sysdate(), '', null, 'AI对话菜单');
+insert into sys_menu values('3004', '客服工单', '0', '8', 'customer-service-ticket', 'knowledge/customerServiceTicket/index', '', '', 1, 0, 'C', '0', '0', 'customer-service:ticket:list', 'message', 'admin', sysdate(), '', null, '智能客服人工处理工单');
 
 insert into sys_menu values('3010', '知识库查询', '3001', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:collection:query', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3011', '文档查询', '3001', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'knowledge:document:list', '#', 'admin', sysdate(), '', null, '');
@@ -167,10 +197,13 @@ insert into sys_menu values('3034', '连通性测试', '3002', '5', '', '', '', 
 insert into sys_menu values('3040', 'AI对话查询', '3003', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:list', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3041', 'AI对话问答', '3003', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:chat', '#', 'admin', sysdate(), '', null, '');
 insert into sys_menu values('3042', 'AI对话设置', '3003', '3', '', '', '', '', 1, 0, 'F', '0', '0', 'ai:chat:edit', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3043', '工单查询', '3004', '1', '', '', '', '', 1, 0, 'F', '0', '0', 'customer-service:ticket:list', '#', 'admin', sysdate(), '', null, '');
+insert into sys_menu values('3044', '工单处理', '3004', '2', '', '', '', '', 1, 0, 'F', '0', '0', 'customer-service:ticket:edit', '#', 'admin', sysdate(), '', null, '');
 
 insert into sys_role_menu values('1', '3001');
 insert into sys_role_menu values('1', '3002');
 insert into sys_role_menu values('1', '3003');
+insert into sys_role_menu values('1', '3004');
 insert into sys_role_menu values('1', '3010');
 insert into sys_role_menu values('1', '3011');
 insert into sys_role_menu values('1', '3012');
@@ -190,3 +223,5 @@ insert into sys_role_menu values('1', '3034');
 insert into sys_role_menu values('1', '3040');
 insert into sys_role_menu values('1', '3041');
 insert into sys_role_menu values('1', '3042');
+insert into sys_role_menu values('1', '3043');
+insert into sys_role_menu values('1', '3044');

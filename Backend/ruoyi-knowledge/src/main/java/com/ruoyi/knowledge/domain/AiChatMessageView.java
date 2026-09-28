@@ -14,6 +14,9 @@ public record AiChatMessageView(
         Double intentConfidence,
         boolean needsClarification,
         List<CustomerServiceSource> sources,
+        String category,
+        String priority,
+        String ticketNo,
         Date createTime)
 {
 }

@@ -39,35 +39,34 @@ export const constantRoutes = [
   },
   {
     path: '/',
-    component: () => import('@/views/public/chat.vue'),
+    component: () => import('@/views/public/resume/index.vue'),
     name: 'PublicHome',
     hidden: true,
-    props: { scene: 'personal-info' },
-    meta: { title: '个人信息', public: true }
+    meta: { title: '个人简历 AI', public: true }
   },
   {
     path: '/personal-info',
-    component: () => import('@/views/public/chat.vue'),
+    component: () => import('@/views/public/resume/index.vue'),
     name: 'PublicPersonalInfo',
     hidden: true,
-    props: { scene: 'personal-info' },
-    meta: { title: '个人信息', public: true }
+    meta: { title: '个人简历 AI', public: true }
   },
   {
     path: '/customer-service',
-    component: () => import('@/views/public/chat.vue'),
+    component: () => import('@/views/public/customer-service/index.vue'),
     name: 'PublicCustomerService',
     hidden: true,
-    props: { scene: 'customer-service' },
     meta: { title: '智能客服', public: true }
   },
   {
-    path: '/chat/:scene',
-    component: () => import('@/views/public/chat.vue'),
-    name: 'PublicChatScene',
-    hidden: true,
-    props: true,
-    meta: { title: 'AI 对话', public: true }
+    path: '/chat/personal-info',
+    redirect: '/personal-info',
+    hidden: true
+  },
+  {
+    path: '/chat/customer-service',
+    redirect: '/customer-service',
+    hidden: true
   },
   {
     path: '/admin/login',
