@@ -46,7 +46,13 @@
           </el-button>
         </template>
       </el-table-column>
-      <el-table-column label="问题类型" prop="issueType" width="120" />
+      <el-table-column label="问题分类" width="120">
+        <template #default="scope">
+          <el-tag type="danger" effect="plain" size="small">
+            {{ categoryName(scope.row.category) }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="优先级" width="100" align="center">
         <template #default="scope">
           <el-tag :type="priorityTag(scope.row.priority)" effect="plain" size="small">
@@ -91,7 +97,7 @@
           <div>
             <div class="ticket-number">{{ activeTicket.ticketNo }}</div>
             <div class="ticket-subtitle">
-              {{ activeTicket.issueType }} · {{ activeTicket.createTime }}
+              {{ categoryName(activeTicket.category) }} · {{ activeTicket.createTime }}
             </div>
           </div>
           <el-tag :type="statusTag(activeTicket.status)">

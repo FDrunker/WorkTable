@@ -76,13 +76,13 @@ class CustomerServiceAiChatServiceTest
                 .thenReturn(reply("退款将在 3 个工作日内到账。", "standard", "medium", null));
 
         var result = service.sendMessage("conversation-1",
-                new CustomerServiceSendRequest("visitor_12345678", "退款", "退款多久到账？"));
+                new CustomerServiceSendRequest("visitor_12345678", "退款多久到账？"));
 
         assertEquals("standard", result.category());
         assertEquals("medium", result.priority());
         assertEquals("RESOLVED", result.ticketStatus());
         assertFalse(result.assistantMessage().content().contains("人工"));
-        verify(ticketService, never()).createComplexTicket(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(ticketService, never()).createComplexTicket(any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -100,7 +100,7 @@ class CustomerServiceAiChatServiceTest
         ticket.setTicketNo("CS20260928120000123");
         ticket.setStatus("WAITING");
         when(ticketService.createComplexTicket(eq("conversation-1"), eq("visitor_12345678"),
-                eq("投诉"), eq("我要投诉订单一直不发货"), eq("complex"), eq("涉及投诉"),
+                eq("我要投诉订单一直不发货"), eq("complex"), eq("涉及投诉"),
                 eq("high"), eq("用户投诉交付延迟"), eq("核实订单并联系专项团队"),
                 eq("我们会尽快核实并联系您")))
                 .thenReturn(ticket);
@@ -108,7 +108,7 @@ class CustomerServiceAiChatServiceTest
                 .thenReturn(reply("已记录您的问题，等待人工给您处理。", "complex", "high", ticket.getTicketNo()));
 
         var result = service.sendMessage("conversation-1",
-                new CustomerServiceSendRequest("visitor_12345678", "投诉", "我要投诉订单一直不发货"));
+                new CustomerServiceSendRequest("visitor_12345678", "我要投诉订单一直不发货"));
 
         assertEquals("complex", result.category());
         assertEquals("high", result.priority());
@@ -116,7 +116,7 @@ class CustomerServiceAiChatServiceTest
         assertEquals("WAITING", result.ticketStatus());
         assertEquals("已记录您的问题，等待人工给您处理。", result.assistantMessage().content());
         verify(ticketService).createComplexTicket(eq("conversation-1"), eq("visitor_12345678"),
-                eq("投诉"), eq("我要投诉订单一直不发货"), eq("complex"), eq("涉及投诉"),
+                eq("我要投诉订单一直不发货"), eq("complex"), eq("涉及投诉"),
                 eq("high"), eq("用户投诉交付延迟"), eq("核实订单并联系专项团队"),
                 eq("我们会尽快核实并联系您"));
     }

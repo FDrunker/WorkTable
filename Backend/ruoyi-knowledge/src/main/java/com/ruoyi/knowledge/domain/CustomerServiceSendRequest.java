@@ -5,7 +5,6 @@ package com.ruoyi.knowledge.domain;
  */
 public record CustomerServiceSendRequest(
         String visitorId,
-        String issueType,
         String question)
 {
 }

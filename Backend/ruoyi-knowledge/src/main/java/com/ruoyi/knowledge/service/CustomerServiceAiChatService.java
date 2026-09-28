@@ -38,8 +38,6 @@ public class CustomerServiceAiChatService
 
     private static final PublicChatScene SCENE = PublicChatScene.CUSTOMER_SERVICE;
 
-    private static final int MAX_ISSUE_TYPE_LENGTH = 64;
-
     private static final String WAITING_MESSAGE = "已记录您的问题，等待人工给您处理。";
 
     private final PublicConversationStore conversationStore;
@@ -110,12 +108,11 @@ public class CustomerServiceAiChatService
             throw new ServiceException("工单内容不能为空");
         }
         String visitor = conversationStore.normalizeVisitorId(request.visitorId(), true);
-        String issueType = normalizeIssueType(request.issueType());
         String question = knowledgeQaService.normalizeQuestion(request.question());
         AiChatConversation conversation = conversationStore.requireConversation(
                 conversationId, visitor, SCENE.getCode());
         ChatModel chatModel = runtimeChatModel();
-        ClassificationResult classification = classify(chatModel, issueType, question);
+        ClassificationResult classification = classify(chatModel, question);
 
         if ("standard".equals(classification.category()))
         {
@@ -123,7 +120,7 @@ public class CustomerServiceAiChatService
                     SCENE.getCode(),
                     question,
                     conversationStore.recentHistory(conversationId),
-                    "客服问题类型：" + issueType);
+                    "客服标准问题");
             AiChatReplyView saved = conversationStore.saveExchange(
                     conversation,
                     question,
@@ -139,11 +136,10 @@ public class CustomerServiceAiChatService
             return toReply(saved, classification.category(), classification.priority(), null, "RESOLVED");
         }
 
-        PreanalysisResult preanalysis = preanalyze(chatModel, issueType, question, classification);
+        PreanalysisResult preanalysis = preanalyze(chatModel, question, classification);
         CustomerServiceTicket ticket = ticketService.createComplexTicket(
                 conversationId,
                 visitor,
-                issueType,
                 question,
                 classification.category(),
                 classification.reason(),
@@ -186,7 +182,7 @@ public class CustomerServiceAiChatService
         return modelClientFactory.createChatModel(model);
     }
 
-    private ClassificationResult classify(ChatModel chatModel, String issueType, String question)
+    private ClassificationResult classify(ChatModel chatModel, String question)
     {
         String prompt = """
                 你是一个客服工单分类专家。请分析以下工单，输出 JSON 格式的分类结果。
@@ -204,9 +200,8 @@ public class CustomerServiceAiChatService
                 standard: 物流查询、退货政策、普通退款（<500元）、账号问题
                 complex: 大额退款（>500元）、投诉、纠纷、产品质量问题
 
-                用户选择的问题类型：%s
                 工单内容：%s
-                """.formatted(issueType, question);
+                """.formatted(question);
         String content = callModel(chatModel, prompt, "工单分类失败");
         try
         {
@@ -235,7 +230,7 @@ public class CustomerServiceAiChatService
         }
     }
 
-    private PreanalysisResult preanalyze(ChatModel chatModel, String issueType, String question,
+    private PreanalysisResult preanalyze(ChatModel chatModel, String question,
             ClassificationResult classification)
     {
         String prompt = """
@@ -247,11 +242,10 @@ public class CustomerServiceAiChatService
                   "suggestedReply": "给用户的建议回复草稿"
                 }
 
-                问题类型：%s
                 优先级：%s
                 分类理由：%s
                 工单内容：%s
-                """.formatted(issueType, classification.priority(), classification.reason(), question);
+                """.formatted(classification.priority(), classification.reason(), question);
         String content = callModel(chatModel, prompt, "问题预分析失败");
         try
         {
@@ -311,16 +305,6 @@ public class CustomerServiceAiChatService
                 priority,
                 ticketNo,
                 ticketStatus);
-    }
-
-    private String normalizeIssueType(String issueType)
-    {
-        String value = StringUtils.isBlank(issueType) ? "其他问题" : issueType.trim();
-        if (value.length() > MAX_ISSUE_TYPE_LENGTH)
-        {
-            throw new ServiceException("问题类型不能超过 " + MAX_ISSUE_TYPE_LENGTH + " 个字符");
-        }
-        return value;
     }
 
     private String normalizePriority(String priority)

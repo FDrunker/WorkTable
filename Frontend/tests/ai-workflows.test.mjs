@@ -31,6 +31,7 @@ test('customer service pipeline classifies, preanalyzes, and persists complex ti
   assert.match(service, /preanalyze/)
   assert.match(service, /createComplexTicket/)
   assert.match(service, /已记录您的问题，等待人工给您处理/)
+  assert.doesNotMatch(service, /用户选择的问题类型/)
 })
 
 test('ticket handling page exposes approve, modify-approve, and escalate actions', () => {
@@ -40,6 +41,15 @@ test('ticket handling page exposes approve, modify-approve, and escalate actions
   assert.match(page, /升级处理/)
   assert.match(page, /AI 预分析/)
   assert.match(page, /回复内容/)
+})
+
+test('customer service accepts only a question and uses a new conversation action', () => {
+  const page = read('Frontend/src/views/public/customer-service/index.vue')
+  const api = read('Frontend/src/api/publicCustomerService.ts')
+  assert.match(page, /新建对话/)
+  assert.doesNotMatch(page, /问题类型/)
+  assert.doesNotMatch(page, /issueType/)
+  assert.doesNotMatch(api, /issueType/)
 })
 
 test('split migration defines the human processing ticket table', () => {

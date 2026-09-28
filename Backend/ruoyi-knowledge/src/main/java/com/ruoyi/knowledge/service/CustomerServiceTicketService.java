@@ -38,14 +38,14 @@ public class CustomerServiceTicketService
 
     @Transactional
     public CustomerServiceTicket createComplexTicket(String conversationId, String visitorId,
-            String issueType, String question, String category, String reason, String priority,
+            String question, String category, String reason, String priority,
             String preanalysisSummary, String preanalysisSolution, String suggestedReply)
     {
         CustomerServiceTicket ticket = new CustomerServiceTicket();
         ticket.setTicketNo(nextTicketNo());
         ticket.setConversationId(conversationId);
         ticket.setVisitorId(visitorId);
-        ticket.setIssueType(issueType);
+        ticket.setIssueType("自动识别");
         ticket.setQuestion(question);
         ticket.setCategory(category);
         ticket.setClassificationReason(reason);

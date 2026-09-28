@@ -25,9 +25,9 @@
 
     <div class="public-body">
       <aside class="history-sidebar">
-        <el-button class="new-ticket-button" @click="startNewTicket">
+        <el-button class="new-chat-button" @click="startNewConversation">
           <el-icon><Plus /></el-icon>
-          <span>新建工单</span>
+          <span>新建对话</span>
         </el-button>
 
         <div class="history-heading">
@@ -47,7 +47,7 @@
           >
             <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
-              <span class="history-title">{{ item.title || '新工单' }}</span>
+              <span class="history-title">{{ item.title || '新对话' }}</span>
               <span class="history-preview">{{ item.lastMessage || '等待提交问题' }}</span>
             </span>
             <el-button
@@ -134,24 +134,14 @@
         </div>
 
         <div class="composer-area" :class="{ centered: !messages.length }">
-          <div class="ticket-composer">
-            <div class="issue-row">
-              <span class="issue-label">问题类型</span>
-              <el-select
-                v-model="issueType"
-                class="issue-select"
-                :disabled="!isReady || sending || loadingConversation"
-              >
-                <el-option v-for="item in issueTypes" :key="item" :label="item" :value="item" />
-              </el-select>
-            </div>
+          <div class="conversation-composer">
             <div class="message-row">
               <el-input
                 v-model="draft"
                 type="textarea"
                 :autosize="{ minRows: 1, maxRows: 6 }"
                 resize="none"
-                :placeholder="isReady ? '填写问题内容' : '当前服务暂不可用'"
+                :placeholder="isReady ? '输入你想咨询的问题' : '当前服务暂不可用'"
                 :disabled="!isReady || sending || loadingConversation"
                 @keydown="handleComposerKeydown"
               />
@@ -174,9 +164,9 @@
 
     <el-drawer v-model="historyOpen" direction="ltr" size="min(86vw, 320px)" :with-header="false">
       <div class="mobile-history-panel">
-        <el-button class="new-ticket-button" @click="startNewTicket">
+        <el-button class="new-chat-button" @click="startNewConversation">
           <el-icon><Plus /></el-icon>
-          <span>新建工单</span>
+          <span>新建对话</span>
         </el-button>
         <div class="history-heading">
           <span>会话索引</span>
@@ -194,7 +184,7 @@
           >
             <span class="history-index">{{ String(index + 1).padStart(2, '0') }}</span>
             <span class="history-content">
-              <span class="history-title">{{ item.title || '新工单' }}</span>
+              <span class="history-title">{{ item.title || '新对话' }}</span>
               <span class="history-preview">{{ item.lastMessage || '等待提交问题' }}</span>
             </span>
           </button>
@@ -218,23 +208,11 @@ import type {
   PublicCustomerServiceMessage
 } from '@/types'
 
-const issueTypes = [
-  '物流查询',
-  '退货政策',
-  '普通退款（500元以下）',
-  '大额退款（500元以上）',
-  '账号问题',
-  '投诉',
-  '纠纷',
-  '产品质量',
-  '其他问题'
-]
 const conversations = ref<PublicCustomerServiceConversation[]>([])
 const messages = ref<PublicCustomerServiceMessage[]>([])
 const activeConversationId = ref<string>()
 const sceneTitle = ref('智能客服')
-const sceneWelcome = ref('请选择问题类型并填写具体内容。')
-const issueType = ref('物流查询')
+const sceneWelcome = ref('请直接描述你需要咨询的问题。')
 const configured = ref(false)
 const enabled = ref(false)
 const draft = ref('')
@@ -293,7 +271,7 @@ function restoreActiveConversation() {
   openConversation(conversationId)
 }
 
-function startNewTicket() {
+function startNewConversation() {
   activeConversationId.value = undefined
   messages.value = []
   draft.value = ''
@@ -332,7 +310,7 @@ async function removeConversation(conversationId: string) {
     (item: PublicCustomerServiceConversation) => item.conversationId !== conversationId
   )
   if (activeConversationId.value === conversationId) {
-    startNewTicket()
+    startNewConversation()
   }
 }
 
@@ -359,7 +337,6 @@ async function sendMessage() {
     const response = await sendCustomerServiceAiMessage(
       conversationId,
       visitorId,
-      issueType.value,
       question
     )
     if (!response.data) throw new Error('提交问题失败')
@@ -513,7 +490,7 @@ function getVisitorId() {
   background: var(--paper);
 }
 
-.new-ticket-button {
+.new-chat-button {
   width: 100%;
   height: 40px;
   justify-content: flex-start;
@@ -525,8 +502,8 @@ function getVisitorId() {
   font-weight: 600;
 }
 
-.new-ticket-button:hover,
-.new-ticket-button:focus {
+.new-chat-button:hover,
+.new-chat-button:focus {
   border-color: var(--ink);
   background: var(--ink);
   color: #fff;
@@ -645,14 +622,14 @@ function getVisitorId() {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 38px 28px 208px;
+  padding: 38px 28px 164px;
 }
 
 .message-scroll.empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-bottom: 170px;
+  padding-bottom: 130px;
 }
 
 .welcome {
@@ -855,7 +832,7 @@ function getVisitorId() {
   background: transparent;
 }
 
-.ticket-composer {
+.conversation-composer {
   width: min(840px, 100%);
   margin: 0 auto;
   padding: 10px 10px 10px 14px;
@@ -864,33 +841,16 @@ function getVisitorId() {
   background: #fff;
 }
 
-.ticket-composer:focus-within {
+.conversation-composer:focus-within {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent);
-}
-
-.issue-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 4px 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-.issue-label {
-  color: var(--ink-soft);
-  font-size: 12px;
-}
-
-.issue-select {
-  width: 180px;
 }
 
 .message-row {
   display: flex;
   align-items: flex-end;
   gap: 10px;
-  padding-top: 5px;
+  padding-top: 0;
 }
 
 .message-row :deep(.el-textarea__inner) {
@@ -964,7 +924,7 @@ function getVisitorId() {
   }
 
   .message-scroll {
-    padding: 28px 14px 192px;
+    padding: 28px 14px 148px;
   }
 
   .composer-area {
@@ -977,8 +937,5 @@ function getVisitorId() {
     padding: 0 12px;
   }
 
-  .issue-select {
-    width: 160px;
-  }
 }
 </style>

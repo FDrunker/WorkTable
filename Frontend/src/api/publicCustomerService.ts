@@ -58,13 +58,12 @@ export function deleteCustomerServiceAiConversation(
 export function sendCustomerServiceAiMessage(
   conversationId: string,
   visitorId: string,
-  issueType: string,
   question: string
 ): Promise<AjaxResult<PublicCustomerServiceReply>> {
   return request({
     url: `/public/customer-service-ai/conversations/${encodeURIComponent(conversationId)}/messages`,
     method: 'post',
-    data: { visitorId, issueType, question },
+    data: { visitorId, question },
     timeout: 180000,
     ...anonymousRequest
   })

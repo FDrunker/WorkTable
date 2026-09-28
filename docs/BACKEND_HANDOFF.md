@@ -255,7 +255,7 @@ Controller：`CustomerServiceTicketController`
 
 | 方法与路径 | 说明 |
 | --- | --- |
-| `GET /knowledge/customer-service/tickets` | 按工单号、状态、优先级和问题类型查询 |
+| `GET /knowledge/customer-service/tickets` | 按工单号、状态和优先级查询 |
 | `POST /knowledge/customer-service/tickets/{ticketId}/handle` | 批准、修改后批准或升级处理 |
 
 ### 6.4 微信归档
@@ -413,7 +413,7 @@ POST /public/resume-ai/conversations/{conversationId}/messages
   -> 直接返回回答
 
 POST /public/customer-service-ai/conversations/{conversationId}/messages
-  -> CustomerServiceAiChatService 接收 issueType + question
+  -> CustomerServiceAiChatService 接收用户问题
   -> LLM 输出 category=standard/complex、reason、priority
   -> standard: KnowledgeQaService 检索后生成标准回答
   -> complex: LLM 预分析 summary/solution/suggestedReply
