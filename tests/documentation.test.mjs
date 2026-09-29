@@ -80,12 +80,30 @@ test('handoff documents keep their key code references valid', () => {
     'Backend/ruoyi-admin/pom.xml',
     'Backend/ruoyi-admin/src/main/resources/application.yml',
     'Backend/ruoyi-framework/src/main/java/com/ruoyi/framework/config/SecurityConfig.java',
-    'Backend/ruoyi-admin/src/main/java/com/ruoyi/web/controller/wechat/WechatChatController.java',
+    'Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/controller/WechatChatController.java',
     'Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/service/WeChatArchiveService.java',
     'Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/service/DocumentTaskProcessor.java'
   ]
 
   references.forEach((relativePath) => {
     assert.equal(existsSync(resolve(root, relativePath)), true, `missing referenced path: ${relativePath}`)
+  })
+})
+
+test('business controllers are colocated with their Maven modules', () => {
+  const controllers = [
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/AiModelController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/CustomerServiceController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/CustomerServiceTicketController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/KnowledgeCollectionController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/KnowledgeTaskController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/PublicCustomerServiceAiController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/PublicResumeAiController.java', 'com.ruoyi.knowledge.controller'],
+    ['Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/controller/WechatChatController.java', 'com.ruoyi.wechat.controller'],
+    ['Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/controller/WechatExceptionHandler.java', 'com.ruoyi.wechat.controller']
+  ]
+
+  controllers.forEach(([relativePath, expectedPackage]) => {
+    assert.match(read(relativePath), new RegExp(`^package ${expectedPackage.replaceAll('.', '\\.')};`, 'm'))
   })
 })

@@ -1,4 +1,4 @@
-package com.ruoyi.web.controller.knowledge;
+package com.ruoyi.knowledge.controller;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,59 +12,59 @@ import org.springframework.web.bind.annotation.RestController;
 import com.ruoyi.common.annotation.Anonymous;
 import com.ruoyi.common.core.controller.BaseController;
 import com.ruoyi.common.core.domain.AjaxResult;
-import com.ruoyi.knowledge.domain.ResumeAiSendRequest;
-import com.ruoyi.knowledge.service.ResumeAiChatService;
+import com.ruoyi.knowledge.domain.CustomerServiceSendRequest;
+import com.ruoyi.knowledge.service.CustomerServiceAiChatService;
 
 /**
- * 免登录个人简历 AI 接口。
+ * 免登录智能客服工单接口。
  */
 @Anonymous
 @RestController
-@RequestMapping("/public/resume-ai")
-public class PublicResumeAiController extends BaseController
+@RequestMapping("/public/customer-service-ai")
+public class PublicCustomerServiceAiController extends BaseController
 {
-    private final ResumeAiChatService resumeAiChatService;
+    private final CustomerServiceAiChatService customerServiceAiChatService;
 
-    public PublicResumeAiController(ResumeAiChatService resumeAiChatService)
+    public PublicCustomerServiceAiController(CustomerServiceAiChatService customerServiceAiChatService)
     {
-        this.resumeAiChatService = resumeAiChatService;
+        this.customerServiceAiChatService = customerServiceAiChatService;
     }
 
     @GetMapping("/bootstrap")
     public AjaxResult bootstrap(@RequestParam(required = false) String visitorId)
     {
-        return AjaxResult.success(resumeAiChatService.bootstrap(visitorId));
+        return AjaxResult.success(customerServiceAiChatService.bootstrap(visitorId));
     }
 
     @PostMapping("/conversations")
     public AjaxResult createConversation(@RequestParam String visitorId)
     {
-        return AjaxResult.success(resumeAiChatService.createConversation(visitorId));
+        return AjaxResult.success(customerServiceAiChatService.createConversation(visitorId));
     }
 
     @GetMapping("/conversations")
     public AjaxResult conversations(@RequestParam String visitorId)
     {
-        return AjaxResult.success(resumeAiChatService.listConversations(visitorId));
+        return AjaxResult.success(customerServiceAiChatService.listConversations(visitorId));
     }
 
     @GetMapping("/conversations/{conversationId}")
     public AjaxResult conversation(@PathVariable String conversationId, @RequestParam String visitorId)
     {
-        return AjaxResult.success(resumeAiChatService.getConversation(conversationId, visitorId));
+        return AjaxResult.success(customerServiceAiChatService.getConversation(conversationId, visitorId));
     }
 
     @DeleteMapping("/conversations/{conversationId}")
     public AjaxResult deleteConversation(@PathVariable String conversationId, @RequestParam String visitorId)
     {
-        resumeAiChatService.deleteConversation(conversationId, visitorId);
+        customerServiceAiChatService.deleteConversation(conversationId, visitorId);
         return AjaxResult.success();
     }
 
     @PostMapping("/conversations/{conversationId}/messages")
     public AjaxResult sendMessage(@PathVariable String conversationId,
-            @RequestBody ResumeAiSendRequest request)
+            @RequestBody CustomerServiceSendRequest request)
     {
-        return AjaxResult.success(resumeAiChatService.sendMessage(conversationId, request));
+        return AjaxResult.success(customerServiceAiChatService.sendMessage(conversationId, request));
     }
 }

@@ -1,4 +1,4 @@
-package com.ruoyi.web.controller.wechat;
+package com.ruoyi.wechat.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ import com.ruoyi.wechat.datasource.WechatDataSourceException;
  *
  * <p>用 {@code basePackages} 限定作用范围，避免影响其他模块的错误处理。
  */
-@RestControllerAdvice(basePackages = "com.ruoyi.web.controller.wechat")
+@RestControllerAdvice(basePackages = "com.ruoyi.wechat.controller")
 public class WechatExceptionHandler
 {
     private static final Logger log = LoggerFactory.getLogger(WechatExceptionHandler.class);

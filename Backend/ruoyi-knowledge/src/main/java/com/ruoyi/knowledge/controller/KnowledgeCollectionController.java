@@ -1,4 +1,4 @@
-package com.ruoyi.web.controller.knowledge;
+package com.ruoyi.knowledge.controller;
 
 import java.util.List;
 

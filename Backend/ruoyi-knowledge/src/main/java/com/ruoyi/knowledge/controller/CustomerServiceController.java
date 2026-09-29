@@ -1,4 +1,4 @@
-package com.ruoyi.web.controller.knowledge;
+package com.ruoyi.knowledge.controller;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

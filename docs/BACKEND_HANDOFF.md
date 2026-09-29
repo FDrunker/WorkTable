@@ -26,14 +26,14 @@
 
 | 模块 | 职责 | 关键依赖 |
 | --- | --- | --- |
-| `ruoyi-admin` | 启动类、Controller、配置、Swagger、最终可执行 JAR | `ruoyi-framework`、`ruoyi-quartz`、`ruoyi-generator`、`ruoyi-wechat`、`ruoyi-knowledge` |
+| `ruoyi-admin` | 启动类、基础框架 Controller、配置、Swagger、最终可执行 JAR | `ruoyi-framework`、`ruoyi-quartz`、`ruoyi-generator`、`ruoyi-wechat`、`ruoyi-knowledge` |
 | `ruoyi-common` | 通用实体、工具、异常、注解、分页、Redis、安全基础 | Spring MVC/Security/Redis、MyBatis 相关基础库 |
 | `ruoyi-system` | 用户、角色、菜单、字典、配置、公告及微信 Mapper XML | `ruoyi-common` |
 | `ruoyi-framework` | 安全、JWT、数据源、AOP、过滤器、Redis、全局异常 | `ruoyi-system` |
 | `ruoyi-quartz` | 定时任务管理与 Quartz 持久化 | `ruoyi-common` |
 | `ruoyi-generator` | 数据库表导入和 Velocity 代码生成 | `ruoyi-common`、Druid |
-| `ruoyi-wechat` | 微信数据源、文本解析、清洗、归档服务 | `ruoyi-common` |
-| `ruoyi-knowledge` | Chroma、Markdown 切片、异步任务、模型配置、AI 对话 | `ruoyi-common`、Spring AI OpenAI/DeepSeek/Ollama/Chroma |
+| `ruoyi-wechat` | 微信 Controller、数据源、文本解析、清洗、归档服务 | `ruoyi-common` |
+| `ruoyi-knowledge` | 知识库与 AI 对话 Controller、Chroma、Markdown 切片、异步任务、模型配置 | `ruoyi-common`、Spring AI OpenAI/DeepSeek/Ollama/Chroma |
 
 有一个容易误解的边界：微信模块的 Java Mapper 接口在 `ruoyi-wechat`，XML 映射文件在 `ruoyi-system/src/main/resources/mapper/wechat/`。Spring 构建时会把所有模块的 `mapper/**/*Mapper.xml` 统一加载，因此改 SQL 时要到 `ruoyi-system` 找。
 
@@ -189,7 +189,7 @@ Token 请求头默认是 `Authorization: Bearer <token>`。Token 本身只是一
 
 ### 6.2 知识库
 
-Controller：`ruoyi-admin/.../web/controller/knowledge/KnowledgeCollectionController.java`
+Controller：`ruoyi-knowledge/.../knowledge/controller/KnowledgeCollectionController.java`
 
 | 方法与路径 | 说明 |
 | --- | --- |
@@ -260,7 +260,7 @@ Controller：`CustomerServiceTicketController`
 
 ### 6.4 微信归档
 
-Controller：`ruoyi-admin/.../web/controller/wechat/WechatChatController.java`
+Controller：`ruoyi-wechat/.../wechat/controller/WechatChatController.java`
 
 | 方法与路径 | 说明 |
 | --- | --- |
@@ -524,7 +524,7 @@ mvn clean package -DskipTests
 ### 新增后台业务模块
 
 1. 优先在独立 Maven 模块或现有域中实现 Service、Domain、Mapper。
-2. Controller 放在 `ruoyi-admin` 的对应包下。
+2. Controller 放在所属业务模块的 `controller` 包下；只有启动或基础框架级 Controller 放在 `ruoyi-admin`。
 3. Mapper XML 放入模块资源目录，并确保符合 `mapper/**/*Mapper.xml` 扫描规则。
 4. 在 `ruoyi-admin/pom.xml` 和根 POM 注册新模块依赖。
 5. 增加 SQL 菜单与按钮权限。
@@ -571,7 +571,7 @@ mvn clean package -DskipTests
 4. `Backend/ruoyi-admin/src/main/resources/application.yml`
 5. `Backend/ruoyi-framework/src/main/java/com/ruoyi/framework/config/SecurityConfig.java`
 6. `Backend/ruoyi-framework/src/main/java/com/ruoyi/framework/security/filter/JwtAuthenticationTokenFilter.java`
-7. `Backend/ruoyi-admin/src/main/java/com/ruoyi/web/controller/knowledge/`
+7. `Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/controller/`
 8. `Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/service/`
-9. `Backend/ruoyi-admin/src/main/java/com/ruoyi/web/controller/wechat/WechatChatController.java`
+9. `Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/controller/WechatChatController.java`
 10. `Backend/ruoyi-wechat/src/main/java/com/ruoyi/wechat/`

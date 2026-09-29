@@ -1,4 +1,4 @@
-package com.ruoyi.web.controller.wechat;
+package com.ruoyi.wechat.controller;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
