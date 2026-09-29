@@ -42,7 +42,7 @@ create table if not exists ai_chat_message (
   intent              varchar(128) default null            comment '识别意图',
   intent_confidence   double       default null            comment '意图置信度',
   needs_clarification char(1)      not null default '0'    comment '是否需要澄清',
-  sources_json        longtext     default null            comment '知识来源 JSON',
+  sources_json        longtext     default null            comment '知识来源引用 JSON，仅保存记录ID和知识库ID',
   category            varchar(32)  default null            comment '客服分类 standard/complex',
   priority            varchar(16)  default null            comment '工单优先级 low/medium/high',
   ticket_no           varchar(32)  default null            comment '复杂问题工单号',

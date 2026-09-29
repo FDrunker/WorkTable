@@ -129,18 +129,34 @@ public class ChromaCollectionService
 
     public ChromaRecord getRecord(String collectionId, String recordId)
     {
+        List<ChromaRecord> records = getRecords(collectionId, List.of(recordId));
+        return records.isEmpty() ? null : records.get(0);
+    }
+
+    public List<ChromaRecord> getRecords(String collectionId, List<String> recordIds)
+    {
+        if (recordIds == null || recordIds.isEmpty())
+        {
+            return Collections.emptyList();
+        }
         GetEmbeddingResponse response = chromaApi.getEmbeddings(tenant(), database(), collectionId,
-                new ChromaApi.GetEmbeddingsRequest(List.of(recordId), null, 1, 0));
+                new ChromaApi.GetEmbeddingsRequest(recordIds, null, recordIds.size(), 0));
         if (response == null || response.ids() == null || response.ids().isEmpty())
         {
-            return null;
+            return Collections.emptyList();
         }
-        String content = response.documents() == null || response.documents().isEmpty()
-                ? "" : response.documents().get(0);
-        Map<String, Object> metadata = response.metadata() == null || response.metadata().isEmpty()
-                || response.metadata().get(0) == null
-                        ? new LinkedHashMap<>() : new LinkedHashMap<>(response.metadata().get(0));
-        return new ChromaRecord(response.ids().get(0), content, metadata);
+        List<ChromaRecord> records = new ArrayList<>(response.ids().size());
+        for (int i = 0; i < response.ids().size(); i++)
+        {
+            String content = response.documents() != null && response.documents().size() > i
+                    ? response.documents().get(i) : "";
+            Map<String, Object> metadata = response.metadata() != null && response.metadata().size() > i
+                    && response.metadata().get(i) != null
+                            ? new LinkedHashMap<>(response.metadata().get(i))
+                            : new LinkedHashMap<>();
+            records.add(new ChromaRecord(response.ids().get(i), content, metadata));
+        }
+        return records;
     }
 
     public List<ChromaSearchResult> query(String collectionId, float[] embedding, int topK)

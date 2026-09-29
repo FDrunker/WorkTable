@@ -112,6 +112,7 @@ npm run build:prod   # 生产构建
 - **AI对话设置**：顶级菜单「AI对话」可分别配置「个人简历 AI」和「智能客服」的页面标题、欢迎语、对话模型、向量模型、知识库集合、TopK（1-20）和启停状态。
 - **个人简历 AI**：公开页 `/personal-info` 是一套独立代码，流程固定为“接收问题 → 简历知识库检索 → LLM 生成标准回答 → 直接回复”，支持匿名会话和历史记录。
 - **智能客服 AI**：公开页 `/customer-service` 是另一套独立代码，用户直接描述问题。LLM 根据工单内容按 `standard / complex` 分类：标准问题直接检索知识库并生成回答；复杂问题先做摘要、处理方案和建议回复预分析，再创建人工工单并回复“已记录您的问题，等待人工给您处理”。
+- **消息来源**：`ai_chat_message.sources_json` 只保存知识片段记录 ID 和知识库 ID，不保存片段正文；打开历史会话时再从 Chroma 批量回查并展示。
 - **客服工单页**：后台「客服工单」页面支持按工单号、状态、优先级筛选；人工可编辑优先级、回复内容和备注，并执行「批准」「修改后批准」「升级处理」。
 
 首次启用该模块需要执行：
@@ -154,6 +155,12 @@ mysql -uroot -p work_table < Backend/sql/public-ai-chat.sql
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/resume-customer-service-split.sql
+```
+
+如果已有消息的 `sources_json` 保存过完整知识片段内容，需要压缩为只保留记录 ID 和知识库 ID：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/ai-chat-message-source-refs.sql
 ```
 
 如果要同步最新的菜单层级调整，将知识库管理和模型管理提升为顶级菜单，并删除「若依官网」菜单，需要执行：

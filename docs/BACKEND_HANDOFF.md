@@ -305,7 +305,9 @@ Controller：`ruoyi-wechat/.../wechat/controller/WechatChatController.java`
 | `ai_knowledge_task` | 导入、修改、重建任务的持久化状态和请求快照，不保存 Markdown 正文 |
 | `ai_customer_service_config` | 按 `scene` 保存页面标题、欢迎语、chat/embedding 模型、知识库、TopK 和启用状态 |
 | `ai_chat_conversation` | 公开 AI 会话、匿名 `visitor_id`、场景、标题和更新时间 |
-| `ai_chat_message` | 公开 AI 消息、角色、意图、澄清状态和知识来源 JSON |
+| `ai_chat_message` | 公开 AI 消息、角色、意图、澄清状态和轻量知识来源引用 JSON |
+
+`ai_chat_message.sources_json` 只保存知识片段记录 ID 与知识库 ID，不保存片段正文、文档名等知识库内容；读取公开会话时后端再按这些 ID 从 Chroma 批量回查并组装来源展示数据。历史数据可执行 `Backend/sql/ai-chat-message-source-refs.sql` 压缩。
 
 `ai_knowledge_document` 没有 `user_id`，知识库数据是系统级共享资源，访问控制依赖菜单权限。`ai_chat_conversation` 使用浏览器生成的 `visitor_id` 隔离匿名历史，查询和删除都会同时校验 `visitor_id + scene`；它不是登录身份的替代品。
 

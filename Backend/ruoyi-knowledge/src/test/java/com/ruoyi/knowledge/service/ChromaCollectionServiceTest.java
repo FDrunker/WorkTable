@@ -17,6 +17,8 @@ import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chroma.vectorstore.ChromaApi;
+import org.springframework.ai.chroma.vectorstore.ChromaApi.GetEmbeddingResponse;
+import org.springframework.ai.chroma.vectorstore.ChromaApi.GetEmbeddingsRequest;
 import org.springframework.ai.chroma.vectorstore.ChromaApi.QueryRequest;
 import org.springframework.ai.chroma.vectorstore.ChromaApi.QueryResponse;
 
@@ -94,5 +96,26 @@ class ChromaCollectionServiceTest
         assertEquals(List.of(1F, 0F).size(), requestCaptor.getValue().queryEmbeddings().get(0).length);
         assertEquals(List.of(QueryRequest.Include.METADATAS, QueryRequest.Include.DOCUMENTS,
                 QueryRequest.Include.DISTANCES), requestCaptor.getValue().include());
+    }
+
+    @Test
+    void getsMultipleRecordsInOneRequest()
+    {
+        when(chromaApi.getEmbeddings(any(), any(), any(), any())).thenReturn(new GetEmbeddingResponse(
+                List.of("record-1", "record-2"),
+                null,
+                List.of("第一段", "第二段"),
+                List.of(Map.of("documentName", "guide.md"), Map.of("documentName", "guide.md"))));
+
+        var records = service.getRecords("collection-1", List.of("record-1", "record-2"));
+
+        assertEquals(2, records.size());
+        assertEquals("record-1", records.get(0).id());
+        assertEquals("第二段", records.get(1).content());
+        ArgumentCaptor<GetEmbeddingsRequest> requestCaptor = ArgumentCaptor.forClass(GetEmbeddingsRequest.class);
+        verify(chromaApi).getEmbeddings(eq("tenant-1"), eq("database-1"), eq("collection-1"),
+                requestCaptor.capture());
+        assertEquals(List.of("record-1", "record-2"), requestCaptor.getValue().ids());
+        assertEquals(2, requestCaptor.getValue().limit());
     }
 }
