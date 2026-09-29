@@ -288,7 +288,7 @@
         <el-form-item label="输入方式">
           <el-radio-group v-model="inputMode">
             <el-radio-button value="upload">上传 Markdown</el-radio-button>
-            <el-radio-button value="paste">粘贴内容</el-radio-button>
+            <el-radio-button value="paste">粘贴 Markdown</el-radio-button>
           </el-radio-group>
         </el-form-item>
         <el-form-item v-if="inputMode === 'upload'" label="Markdown">
@@ -303,7 +303,7 @@
             <el-button icon="Upload">选择 .md 文件</el-button>
           </el-upload>
         </el-form-item>
-        <el-form-item v-else label="内容" prop="content">
+        <el-form-item v-else label="Markdown 内容" prop="content">
           <el-input
             v-model="documentForm.content"
             type="textarea"
