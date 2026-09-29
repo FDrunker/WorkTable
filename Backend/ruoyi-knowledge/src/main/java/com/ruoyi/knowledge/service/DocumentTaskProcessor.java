@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.knowledge.domain.AiModelConfig;
+import com.ruoyi.knowledge.domain.ChromaRecord;
 import com.ruoyi.knowledge.domain.DocumentImportRequest;
 import com.ruoyi.knowledge.domain.DocumentTaskPayload;
 import com.ruoyi.knowledge.domain.KnowledgeDocument;
@@ -24,6 +26,7 @@ import com.ruoyi.knowledge.mapper.KnowledgeDocumentMapper;
 import com.ruoyi.knowledge.mapper.KnowledgeTaskMapper;
 import com.ruoyi.knowledge.model.KnowledgeDocumentStatus;
 import com.ruoyi.knowledge.model.KnowledgeTaskStatus;
+import com.ruoyi.knowledge.model.KnowledgeTaskType;
 
 import tools.jackson.databind.json.JsonMapper;
 
@@ -109,19 +112,8 @@ public class DocumentTaskProcessor
         {
             throw new ServiceException("任务请求为空");
         }
-        String content = request.getContent();
         KnowledgeDocument document = documentMapper.selectDocumentById(task.getDocumentId());
-        if ((StringUtils.isBlank(content)) && document != null && StringUtils.isNotBlank(document.getTempFilePath()))
-        {
-            content = readTempFile(document.getTempFilePath());
-        }
-        if (StringUtils.isBlank(content))
-        {
-            throw new ServiceException("Markdown 内容不能为空");
-        }
-        request.setContent(content);
-
-        List<String> chunks = chunker.split(content, request.getChunkSize(), request.getChunkOverlap());
+        List<String> chunks = loadChunks(task, request, document);
         if (chunks.isEmpty())
         {
             throw new ServiceException("切片结果为空");
@@ -173,12 +165,66 @@ public class DocumentTaskProcessor
             String tempFilePath = document.getTempFilePath();
             document.setStatus(KnowledgeDocumentStatus.SUCCESS);
             document.setChunkCount(chunks.size());
-            document.setContent(content);
             document.setTempFilePath("");
             documentMapper.updateDocument(document);
             deleteTempFile(tempFilePath);
         }
         taskService.finish(task.getTaskId(), KnowledgeTaskStatus.SUCCESS, "COMPLETED", "处理完成", "");
+    }
+
+    private List<String> loadChunks(KnowledgeTask task, DocumentImportRequest request, KnowledgeDocument document)
+    {
+        if (KnowledgeTaskType.REINDEX.equals(task.getTaskType()))
+        {
+            return chromaService.listRecords(task.getCollectionId()).stream()
+                    .filter(record -> task.getDocumentId().equals(metadata(record, "documentId", record.id())))
+                    .sorted(Comparator.comparingInt(this::chunkIndex))
+                    .map(ChromaRecord::content)
+                    .filter(StringUtils::isNotBlank)
+                    .toList();
+        }
+
+        String content = request.getContent();
+        if (StringUtils.isBlank(content) && document != null && StringUtils.isNotBlank(document.getTempFilePath()))
+        {
+            content = readTempFile(document.getTempFilePath());
+        }
+        if (StringUtils.isBlank(content))
+        {
+            throw new ServiceException("Markdown 内容不能为空");
+        }
+        request.setContent(null);
+        return chunker.split(content, request.getChunkSize(), request.getChunkOverlap());
+    }
+
+    private int chunkIndex(ChromaRecord record)
+    {
+        if (record.metadata() == null || record.metadata().get("chunkIndex") == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+        Object value = record.metadata().get("chunkIndex");
+        if (value instanceof Number number)
+        {
+            return number.intValue();
+        }
+        try
+        {
+            return Integer.parseInt(String.valueOf(value));
+        }
+        catch (NumberFormatException e)
+        {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    private String metadata(ChromaRecord record, String key, String fallback)
+    {
+        if (record == null || record.metadata() == null || record.metadata().get(key) == null)
+        {
+            return fallback;
+        }
+        return String.valueOf(record.metadata().get(key));
     }
 
     private List<String> oldRecordIds(KnowledgeTask task, DocumentTaskPayload payload)

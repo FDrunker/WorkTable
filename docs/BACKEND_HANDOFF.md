@@ -301,8 +301,8 @@ Controller：`ruoyi-wechat/.../wechat/controller/WechatChatController.java`
 | 表 | 作用 |
 | --- | --- |
 | `ai_model_config` | 模型提供商、类型、模型代码、Base URL、加密后的 API Key、默认和测试状态 |
-| `ai_knowledge_document` | 本系统管理的逻辑文档、Markdown 原文、切片参数、任务状态 |
-| `ai_knowledge_task` | 导入、修改、重建任务的持久化状态和请求快照 |
+| `ai_knowledge_document` | 本系统管理的逻辑文档元数据、临时文件路径、切片参数和任务状态，不保存 Markdown 正文 |
+| `ai_knowledge_task` | 导入、修改、重建任务的持久化状态和请求快照，不保存 Markdown 正文 |
 | `ai_customer_service_config` | 按 `scene` 保存页面标题、欢迎语、chat/embedding 模型、知识库、TopK 和启用状态 |
 | `ai_chat_conversation` | 公开 AI 会话、匿名 `visitor_id`、场景、标题和更新时间 |
 | `ai_chat_message` | 公开 AI 消息、角色、意图、澄清状态和知识来源 JSON |
@@ -347,8 +347,9 @@ Controller
 关键行为：
 
 - 导入必须选择 `embedding` 模型，未选择会直接拒绝。
-- `.md` 文件先保存到 `knowledge.storage-path`，成功写入后删除暂存文件；正文仍保存在 MySQL。
+- `.md` 文件或粘贴内容先保存到 `knowledge.storage-path`，成功切分并写入 Chroma 后删除暂存文件；正文不写入 MySQL，任务 JSON 也不包含正文。
 - 仅接受 Markdown 文档。切分器按标题层级、段落、列表、表格、引用和代码块等结构切分，并保留当前标题的层级上下文；默认块大小 1024，默认重叠 100。
+- 重建任务直接读取该 `documentId` 在 Chroma 中的现有切片并重新生成向量，不依赖数据库原文。
 - Chroma 写入批次是 64；读取按 500 分页，单次最多读取 10000 条。
 - 没有 `documentId` metadata 的 Chroma 记录会被视为外部已有数据。
 - 删除 collection 前会检查 `PENDING` 或 `RUNNING` 任务。

@@ -25,4 +25,10 @@ test('knowledge documents use markdown structure chunking without a separator', 
     'Backend/ruoyi-knowledge/src/main/java/com/ruoyi/knowledge/service/KnowledgeDocumentService.java'
   )
   assert.match(service, /endsWith\("\.md"\)/)
+  assert.match(service, /request\.setContent\(null\)/)
+
+  const mapper = read(
+    'Backend/ruoyi-knowledge/src/main/resources/mapper/knowledge/KnowledgeDocumentMapper.xml'
+  )
+  assert.doesNotMatch(mapper, /(?:select|insert into|update)[\s\S]*?\bcontent\b/)
 })

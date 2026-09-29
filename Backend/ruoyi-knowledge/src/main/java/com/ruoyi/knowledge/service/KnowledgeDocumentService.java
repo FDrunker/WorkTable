@@ -121,6 +121,8 @@ public class KnowledgeDocumentService
         {
             throw new ServiceException("仅本系统管理的文档可以查看原文");
         }
+        String pendingContent = readTempFile(document.getTempFilePath());
+        document.setContent(StringUtils.hasText(pendingContent) ? pendingContent : recoverContent(document));
         return document;
     }
 
@@ -135,10 +137,9 @@ public class KnowledgeDocumentService
     public KnowledgeTask importDocument(DocumentImportRequest request, MultipartFile file, String username)
     {
         requireEmbeddingModel(request.getModelId());
-        String content = readContent(request, file);
         String documentName = resolveDocumentName(request, file);
         String documentId = "doc_" + UUID.randomUUID().toString().replace("-", "");
-        String tempFilePath = saveTempFile(file);
+        String tempFilePath = saveTempFile(request, file);
 
         KnowledgeDocument document = new KnowledgeDocument();
         document.setDocumentId(documentId);
@@ -146,18 +147,24 @@ public class KnowledgeDocumentService
         document.setCollectionName(request.getCollectionName());
         document.setDocumentName(documentName);
         document.setSourceType(file != null && !file.isEmpty() ? "UPLOAD" : "PASTE");
-        document.setContent(content);
         document.setTempFilePath(tempFilePath);
         applyChunkConfig(document, request);
         document.setEmbeddingModelId(request.getModelId());
         document.setStatus(KnowledgeDocumentStatus.PENDING);
         document.setChunkCount(0);
         document.setCreateBy(username);
-        documentMapper.insertDocument(document);
+        try
+        {
+            documentMapper.insertDocument(document);
+        }
+        catch (RuntimeException e)
+        {
+            deleteTempFile(tempFilePath);
+            throw e;
+        }
 
         request.setDocumentId(documentId);
         request.setDocumentName(documentName);
-        request.setContent(content);
         return submitTask(KnowledgeTaskType.IMPORT, document, true, List.of(), request, username);
     }
 
@@ -171,7 +178,6 @@ public class KnowledgeDocumentService
         }
         KnowledgeDocument existing = documentMapper.selectDocumentById(documentId);
         boolean managed = existing != null;
-        String content = readContent(request, file);
         String documentName = resolveDocumentName(request, file);
         if (!StringUtils.hasText(documentName))
         {
@@ -184,31 +190,43 @@ public class KnowledgeDocumentService
             originalRecordIds.add(documentId);
         }
 
+        String previousTempFilePath = managed ? existing.getTempFilePath() : null;
         KnowledgeDocument document = managed ? existing : new KnowledgeDocument();
+        String tempFilePath = saveTempFile(request, file);
         document.setDocumentId(documentId);
         document.setCollectionId(request.getCollectionId());
         document.setCollectionName(request.getCollectionName());
         document.setDocumentName(documentName);
         document.setSourceType(file != null && !file.isEmpty() ? "UPLOAD" : "PASTE");
-        document.setContent(content);
-        document.setTempFilePath(saveTempFile(file));
+        document.setTempFilePath(tempFilePath);
         applyChunkConfig(document, request);
         document.setEmbeddingModelId(request.getModelId());
         document.setStatus(KnowledgeDocumentStatus.PENDING);
         document.setCreateBy(managed ? existing.getCreateBy() : username);
         document.setUpdateBy(username);
+        try
+        {
+            if (managed)
+            {
+                documentMapper.updateDocument(document);
+            }
+            else
+            {
+                documentMapper.insertDocument(document);
+            }
+        }
+        catch (RuntimeException e)
+        {
+            deleteTempFile(tempFilePath);
+            throw e;
+        }
         if (managed)
         {
-            documentMapper.updateDocument(document);
-        }
-        else
-        {
-            documentMapper.insertDocument(document);
+            deleteTempFile(previousTempFilePath);
         }
 
         request.setDocumentId(documentId);
         request.setDocumentName(documentName);
-        request.setContent(content);
         return submitTask(KnowledgeTaskType.UPDATE, document, managed, originalRecordIds, request, username);
     }
 
@@ -233,7 +251,6 @@ public class KnowledgeDocumentService
             document.setCollectionId(collectionId);
             document.setDocumentName(metadata(record, "documentName", documentId));
             document.setSourceType("EXTERNAL");
-            document.setContent(record.content());
             document.setChunkSize(1024);
             document.setChunkOverlap(100);
             document.setStatus(KnowledgeDocumentStatus.PENDING);
@@ -282,37 +299,13 @@ public class KnowledgeDocumentService
     private KnowledgeTask submitTask(String taskType, KnowledgeDocument document, boolean managed,
             List<String> originalRecordIds, DocumentImportRequest request, String username)
     {
+        request.setContent(null);
         DocumentTaskPayload payload = new DocumentTaskPayload();
         payload.setRequest(request);
         payload.setManaged(managed);
         payload.setOriginalRecordIds(originalRecordIds);
         return taskService.createAndSubmit(taskType, document.getDocumentId(), document.getDocumentName(),
                 document.getCollectionId(), document.getCollectionName(), request.getModelId(), payload, username);
-    }
-
-    private String readContent(DocumentImportRequest request, MultipartFile file)
-    {
-        if (file != null && !file.isEmpty())
-        {
-            String name = file.getOriginalFilename();
-            if (name == null || !name.toLowerCase().endsWith(".md"))
-            {
-                throw new ServiceException("仅支持 Markdown（.md）文件");
-            }
-            try
-            {
-                return new String(file.getBytes(), StandardCharsets.UTF_8);
-            }
-            catch (IOException e)
-            {
-                throw new ServiceException("读取 Markdown 文件失败");
-            }
-        }
-        if (!StringUtils.hasText(request.getContent()))
-        {
-            throw new ServiceException("Markdown 内容不能为空");
-        }
-        return request.getContent();
     }
 
     private String resolveDocumentName(DocumentImportRequest request, MultipartFile file)
@@ -352,28 +345,97 @@ public class KnowledgeDocumentService
         request.setModelId(document.getEmbeddingModelId());
         request.setChunkSize(document.getChunkSize());
         request.setChunkOverlap(document.getChunkOverlap());
-        request.setContent(document.getContent());
         return request;
     }
 
-    private String saveTempFile(MultipartFile file)
+    private String saveTempFile(DocumentImportRequest request, MultipartFile file)
     {
-        if (file == null || file.isEmpty())
-        {
-            return null;
-        }
         try
         {
             Path directory = Path.of(properties.getStoragePath()).toAbsolutePath().normalize();
             Files.createDirectories(directory);
             String name = UUID.randomUUID().toString().replace("-", "") + ".md";
             Path target = directory.resolve(name);
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            if (file != null && !file.isEmpty())
+            {
+                String fileName = file.getOriginalFilename();
+                if (fileName == null || !fileName.toLowerCase().endsWith(".md"))
+                {
+                    throw new ServiceException("仅支持 Markdown（.md）文件");
+                }
+                try (var inputStream = file.getInputStream())
+                {
+                    Files.copy(inputStream, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+            else
+            {
+                if (!StringUtils.hasText(request.getContent()))
+                {
+                    throw new ServiceException("Markdown 内容不能为空");
+                }
+                Files.writeString(target, request.getContent(), StandardCharsets.UTF_8);
+            }
             return target.toString();
+        }
+        catch (ServiceException e)
+        {
+            throw e;
         }
         catch (IOException e)
         {
             throw new ServiceException("保存 Markdown 暂存文件失败");
+        }
+    }
+
+    private String readTempFile(String path)
+    {
+        if (!StringUtils.hasText(path))
+        {
+            return "";
+        }
+        try
+        {
+            return Files.exists(Path.of(path)) ? Files.readString(Path.of(path), StandardCharsets.UTF_8) : "";
+        }
+        catch (IOException e)
+        {
+            return "";
+        }
+    }
+
+    private String recoverContent(KnowledgeDocument document)
+    {
+        if (!StringUtils.hasText(document.getCollectionId()))
+        {
+            return "";
+        }
+        return chromaService.listRecords(document.getCollectionId()).stream()
+                .filter(record -> document.getDocumentId().equals(metadata(record, "documentId", record.id())))
+                .sorted(Comparator.comparingInt(this::chunkIndex))
+                .map(ChromaRecord::content)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.joining("\n\n"));
+    }
+
+    private int chunkIndex(ChromaRecord record)
+    {
+        if (record.metadata() == null || record.metadata().get("chunkIndex") == null)
+        {
+            return Integer.MAX_VALUE;
+        }
+        Object value = record.metadata().get("chunkIndex");
+        if (value instanceof Number number)
+        {
+            return number.intValue();
+        }
+        try
+        {
+            return Integer.parseInt(String.valueOf(value));
+        }
+        catch (NumberFormatException e)
+        {
+            return Integer.MAX_VALUE;
         }
     }
 

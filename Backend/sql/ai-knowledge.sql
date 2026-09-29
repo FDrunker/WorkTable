@@ -39,7 +39,6 @@ create table ai_knowledge_document (
   collection_name   varchar(255)  default ''              comment 'Chroma 集合名称快照',
   document_name     varchar(255)  not null                comment '文档名称',
   source_type       varchar(16)   not null                comment '来源 UPLOAD/PASTE',
-  content           longtext                              comment 'Markdown 正文',
   temp_file_path    varchar(1000) default null            comment '本地暂存文件路径',
   chunk_size        int           default 1024            comment '切片大小（字符）',
   chunk_overlap     int           default 100             comment '切片重叠（字符）',

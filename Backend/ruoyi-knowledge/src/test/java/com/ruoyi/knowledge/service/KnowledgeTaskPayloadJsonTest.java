@@ -1,6 +1,7 @@
 package com.ruoyi.knowledge.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class KnowledgeTaskPayloadJsonTest
         DocumentTaskPayload restored = objectMapper.readValue(json, DocumentTaskPayload.class);
 
         assertEquals("guide.md", restored.getRequest().getDocumentName());
-        assertEquals("# 标题", restored.getRequest().getContent());
+        assertNull(restored.getRequest().getContent());
         assertTrue(restored.isManaged());
         assertEquals("old-1", restored.getOriginalRecordIds().get(0));
     }

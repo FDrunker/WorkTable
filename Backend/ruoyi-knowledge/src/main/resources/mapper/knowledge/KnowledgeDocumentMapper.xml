@@ -10,7 +10,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="collectionName" column="collection_name" />
         <result property="documentName" column="document_name" />
         <result property="sourceType" column="source_type" />
-        <result property="content" column="content" />
         <result property="tempFilePath" column="temp_file_path" />
         <result property="chunkSize" column="chunk_size" />
         <result property="chunkOverlap" column="chunk_overlap" />
@@ -26,7 +25,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <sql id="selectDocumentVo">
         select document_id, collection_id, collection_name, document_name, source_type,
-               content, temp_file_path, chunk_size, chunk_overlap,
+               temp_file_path, chunk_size, chunk_overlap,
                embedding_model_id, status, chunk_count, create_by, create_time,
                update_by, update_time, remark
         from ai_knowledge_document
@@ -57,11 +56,11 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     <insert id="insertDocument" parameterType="com.ruoyi.knowledge.domain.KnowledgeDocument">
         insert into ai_knowledge_document (
             document_id, collection_id, collection_name, document_name, source_type,
-            content, temp_file_path, chunk_size, chunk_overlap,
+            temp_file_path, chunk_size, chunk_overlap,
             embedding_model_id, status, chunk_count, create_by, create_time, remark
         ) values (
             #{documentId}, #{collectionId}, #{collectionName}, #{documentName}, #{sourceType},
-            #{content}, #{tempFilePath}, #{chunkSize}, #{chunkOverlap},
+            #{tempFilePath}, #{chunkSize}, #{chunkOverlap},
             #{embeddingModelId}, #{status}, #{chunkCount}, #{createBy}, sysdate(), #{remark}
         )
     </insert>
@@ -73,7 +72,6 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
             <if test="collectionName != null">collection_name = #{collectionName},</if>
             <if test="documentName != null">document_name = #{documentName},</if>
             <if test="sourceType != null">source_type = #{sourceType},</if>
-            <if test="content != null">content = #{content},</if>
             <if test="tempFilePath != null">temp_file_path = #{tempFilePath},</if>
             <if test="chunkSize != null">chunk_size = #{chunkSize},</if>
             <if test="chunkOverlap != null">chunk_overlap = #{chunkOverlap},</if>

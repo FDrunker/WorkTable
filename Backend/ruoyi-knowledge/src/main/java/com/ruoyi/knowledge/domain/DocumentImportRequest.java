@@ -1,6 +1,7 @@
 package com.ruoyi.knowledge.domain;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * 文档导入或更新请求。
@@ -22,6 +23,7 @@ public class DocumentImportRequest
 
     private Integer chunkOverlap = 100;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String content;
 
     public String getDocumentId()

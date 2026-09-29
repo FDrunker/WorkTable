@@ -108,7 +108,7 @@ npm run build:prod   # 生产构建
 - **任务**：导入、修改和重新向量化均异步执行，任务、进度、取消标记和历史记录持久化到 MySQL。服务重启时运行中的任务会标记为失败，可手动重试。
 - **模型管理**：支持 OpenAI / ChatGPT、DeepSeek、Ollama，以及 TypeSafe Jev 自定义适配器。模型具有 `embedding`、`chat`、`system-one` 类型、启用状态、默认标记和连通性测试结果。
 - **密钥安全**：API Key 使用 AES-GCM 加密后存入数据库，查询接口只返回掩码。主密钥配置为 `knowledge.encryption-key`，生产环境应通过 `WORKTABLE_KNOWLEDGE_KEY` 环境变量覆盖。
-- **本地文件**：上传的 Markdown 先写入 `knowledge.storage-path`，成功写入 Chroma 后删除暂存文件；原文正文保存在 MySQL 中，供后续编辑和重建使用。
+- **本地文件**：上传或粘贴的 Markdown 先写入 `knowledge.storage-path`，成功切分并写入 Chroma 后删除暂存文件；正文不写入 MySQL，避免大文档拖垮数据库。编辑时会从 Chroma 切片临时恢复正文。
 - **AI对话设置**：顶级菜单「AI对话」可分别配置「个人简历 AI」和「智能客服」的页面标题、欢迎语、对话模型、向量模型、知识库集合、TopK（1-20）和启停状态。
 - **个人简历 AI**：公开页 `/personal-info` 是一套独立代码，流程固定为“接收问题 → 简历知识库检索 → LLM 生成标准回答 → 直接回复”，支持匿名会话和历史记录。
 - **智能客服 AI**：公开页 `/customer-service` 是另一套独立代码，用户直接描述问题。LLM 根据工单内容按 `standard / complex` 分类：标准问题直接检索知识库并生成回答；复杂问题先做摘要、处理方案和建议回复预分析，再创建人工工单并回复“已记录您的问题，等待人工给您处理”。
@@ -124,6 +124,12 @@ mysql -uroot -p work_table < Backend/sql/ai-knowledge.sql
 
 ```bash
 mysql -uroot -p work_table < Backend/sql/ai-knowledge-collection-management.sql
+```
+
+已经执行过旧版 `ai-knowledge.sql` 的数据库，还需要移除文档正文存储：
+
+```bash
+mysql -uroot -p work_table < Backend/sql/ai-knowledge-document-temp-storage.sql
 ```
 
 已经执行过旧版 `ai-knowledge.sql` 的数据库，还需要执行 AI对话迁移：

@@ -19,6 +19,9 @@ public class KnowledgeDocument extends BaseEntity
 
     private String sourceType;
 
+    /**
+     * 仅用于查看或编辑时临时组装，不持久化到数据库。
+     */
     private String content;
 
     private String tempFilePath;
