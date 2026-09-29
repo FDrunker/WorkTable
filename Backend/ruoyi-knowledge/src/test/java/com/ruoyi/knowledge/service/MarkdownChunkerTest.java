@@ -33,6 +33,20 @@ class MarkdownChunkerTest
     }
 
     @Test
+    void skipsHeadingOnlyAncestorsAndKeepsThemAsContext()
+    {
+        String content = "# 一级标题\n\n"
+                + "## 二级标题\n\n"
+                + "### 三级标题\n\n"
+                + "三级内容";
+
+        List<String> chunks = chunker.split(content, 128, 0);
+
+        assertEquals(List.of(
+                "# 一级标题\n\n## 二级标题\n\n### 三级标题\n\n三级内容"), chunks);
+    }
+
+    @Test
     void keepsFencedCodeBlockAndListAsAtomicStructures()
     {
         String code = "```java\nline 1\n\nline 2\n```";

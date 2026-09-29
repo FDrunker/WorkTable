@@ -199,7 +199,7 @@ public class MarkdownChunker
             }
         }
         return sections.stream()
-                .filter(section -> !section.headingPath().isEmpty() || !section.blocks().isEmpty())
+                .filter(section -> !section.blocks().isEmpty())
                 .toList();
     }
 
@@ -209,12 +209,6 @@ public class MarkdownChunker
                 .map(MarkdownHeading::content)
                 .reduce((left, right) -> left + BLOCK_SEPARATOR + right)
                 .orElse("");
-        if (section.blocks().isEmpty())
-        {
-            chunks.addAll(hardSplit(headingContext, chunkSize, overlap));
-            return;
-        }
-
         String separator = headingContext.isEmpty() ? "" : BLOCK_SEPARATOR;
         int bodyBudget = chunkSize - headingContext.length() - separator.length();
         if (bodyBudget < 1)
