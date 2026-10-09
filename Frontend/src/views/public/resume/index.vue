@@ -441,8 +441,10 @@ function getVisitorId() {
 
 .public-body {
   height: calc(100vh - 64px);
+  height: calc(100dvh - 64px);
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .history-sidebar {
@@ -575,6 +577,8 @@ function getVisitorId() {
 .chat-main {
   position: relative;
   min-width: 0;
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--paper-raised);
@@ -862,6 +866,7 @@ function getVisitorId() {
 
   .public-body {
     height: calc(100vh - 60px);
+    height: calc(100dvh - 60px);
     display: block;
   }
 
