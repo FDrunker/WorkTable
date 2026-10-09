@@ -92,13 +92,13 @@ mvn clean package
 java -jar ruoyi-admin/target/ruoyi-admin.jar
 ```
 
-默认端口是 `8090`。可临时覆盖：
+默认端口是 `8080`。可临时覆盖：
 
 ```powershell
-java -jar ruoyi-admin/target/ruoyi-admin.jar --server.port=8091
+java -jar ruoyi-admin/target/ruoyi-admin.jar --server.port=8081
 ```
 
-Swagger UI：`http://localhost:8090/swagger-ui.html`
+Swagger UI：`http://localhost:8080/swagger-ui.html`
 
 注意：当前 `springdoc.group-configs` 只扫描 `com.ruoyi.web.controller.tool`，不能把 Swagger 当成全部业务接口的完整文档。知识库、AI 对话和微信接口应以 Controller 源码和本文接口表为准。
 
@@ -478,7 +478,7 @@ POST /wechat/text/commit
 
 | 配置前缀 | 关键项 | 说明 |
 | --- | --- | --- |
-| `server` | `port`、`servlet.context-path` | 默认端口 8090 |
+| `server` | `port`、`servlet.context-path` | 默认端口 8080 |
 | `spring.data.redis` | host、port、database、password | 登录状态和缓存 |
 | `token` | header、secret、expireTime | JWT 配置，生产必须更换 secret |
 | `ruoyi` | profile、captchaType | 上传路径和验证码 |

@@ -26,7 +26,7 @@ npm install
 npm run dev
 ```
 
-开发服务器默认监听 `http://localhost:80`，并将 `/dev-api` 代理到 `http://localhost:8090`。代理配置在 `Frontend/vite.config.ts`。
+开发服务器默认监听 `http://localhost:80`，并将 `/dev-api` 代理到 `http://localhost:8080`。后端地址只在前端 `Frontend/vite.config.ts` 中配置一次，所有开发代理共用该地址。
 
 常用命令：
 

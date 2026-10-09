@@ -2,7 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import path from 'path'
 import createVitePlugins from './vite/plugins'
 
-const baseUrl = 'http://localhost:8090' // 后端接口
+const baseUrl = 'http://localhost:8080' // 前端代理的后端接口地址（唯一配置点）
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode, command }) => {
@@ -77,4 +77,3 @@ export default defineConfig(({ mode, command }) => {
     }
   }
 })
-

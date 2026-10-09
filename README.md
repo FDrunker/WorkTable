@@ -73,13 +73,13 @@ mvn clean package
 java -jar ruoyi-admin/target/ruoyi-admin.jar
 ```
 
-服务默认监听 `http://localhost:8090`，Swagger UI：`http://localhost:8090/swagger-ui.html`。
+服务默认监听 `http://localhost:8080`，Swagger UI：`http://localhost:8080/swagger-ui.html`。
 
-> 该端口由 `application.yml` 的 `server.port` 控制（脚手架原为 8080，本机长期被其他进程占用故改为 8090）。
+> 该端口由 `application.yml` 的 `server.port` 控制。
 > 需要临时更换时用启动参数覆盖即可，无须改文件：
 >
 > ```bash
-> java -jar ruoyi-admin/target/ruoyi-admin.jar --server.port=8091
+> java -jar ruoyi-admin/target/ruoyi-admin.jar --server.port=8081
 > ```
 
 ### 3. 前端
@@ -91,7 +91,7 @@ npm run dev          # 开发模式
 npm run build:prod   # 生产构建
 ```
 
-开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8090`（见 `vite.config.ts`）。
+开发服务器默认监听 `http://localhost:80`，请求经 `/dev-api` 代理到后端 `http://localhost:8080`（见 `vite.config.ts`）。
 
 - 免登录个人简历 AI：`http://localhost/` 或 `http://localhost/personal-info`
 - 免登录智能客服：`http://localhost/customer-service`
