@@ -27,3 +27,25 @@ test('public chat pages keep the composer inside the visible viewport', () => {
     assert.match(page, /height:\s*calc\(100dvh - 60px\);/)
   }
 })
+
+test('public chat pages expose a mobile scene switch', () => {
+  const resumePage = readFileSync(resolve(root, publicChatPages[1]), 'utf8')
+  const customerServicePage = readFileSync(resolve(root, publicChatPages[0]), 'utf8')
+
+  assert.match(
+    resumePage,
+    /class="header-link mobile-scene-link" to="\/customer-service">智能客服<\/router-link>/
+  )
+  assert.match(
+    customerServicePage,
+    /class="header-link mobile-scene-link" to="\/personal-info">个人简历<\/router-link>/
+  )
+
+  for (const page of [resumePage, customerServicePage]) {
+    assert.match(page, /\.header-link:not\(\.mobile-scene-link\)/)
+    assert.match(
+      page,
+      /\.mobile-scene-link\s*\{[^}]*min-height:\s*36px;[^}]*display:\s*inline-flex;[^}]*\}/s
+    )
+  }
+})

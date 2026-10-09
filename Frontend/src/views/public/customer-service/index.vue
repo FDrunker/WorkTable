@@ -9,7 +9,7 @@
       <span class="page-label">智能客服</span>
 
       <div class="header-actions">
-        <router-link class="header-link" to="/personal-info">个人简历 AI</router-link>
+        <router-link class="header-link mobile-scene-link" to="/personal-info">个人简历</router-link>
         <router-link class="header-link" to="/admin/login">后台管理</router-link>
         <el-button
           class="mobile-history-button"
@@ -906,12 +906,25 @@ function getVisitorId() {
   }
 
   .brand-name,
-  .header-link {
+  .header-link:not(.mobile-scene-link) {
     display: none;
   }
 
   .page-label {
     justify-self: center;
+  }
+
+  .header-actions {
+    gap: 4px;
+  }
+
+  .mobile-scene-link {
+    min-height: 36px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 7px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
   }
 
   .mobile-history-button {
